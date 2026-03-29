@@ -25,6 +25,3 @@ Thumbs.db
 *.tmp
 
 coverage/
-
-package-lock.json
-package.json
