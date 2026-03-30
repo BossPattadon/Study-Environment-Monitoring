@@ -41,7 +41,7 @@ export default function SensorsPage() {
             Sensor detail
           </h1>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            กราฟย้อนหลังจาก <code className="font-mono text-xs">sensor_data</code> — แยกรายตัวแปร
+            Time Series Graph from <code className="font-mono text-xs">sensor_data</code>
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -71,21 +71,21 @@ export default function SensorsPage() {
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <SingleAxisLineChart
           rows={rows}
-          title="Temperature — กราฟย้อนหลัง"
+          title="Temperature — Time Series"
           valueKeys={["temperature", "temp"]}
           yLabel="°C"
           borderColor="rgb(244, 63, 94)"
         />
         <SingleAxisLineChart
           rows={rows}
-          title="Humidity — กราฟย้อนหลัง"
+          title="Humidity — Time Series"
           valueKeys={["humidity"]}
           yLabel="% RH"
           borderColor="rgb(59, 130, 246)"
         />
         <SingleAxisLineChart
           rows={rows}
-          title="Light — กราฟย้อนหลัง"
+          title="Light — Time Series"
           valueKeys={[
             "light",
             "light_level",
@@ -97,7 +97,7 @@ export default function SensorsPage() {
         />
         <SingleAxisLineChart
           rows={rows}
-          title="Noise — กราฟย้อนหลัง"
+          title="Noise — Time Series"
           valueKeys={["noise", "noise_level", "decibel", "db"]}
           yLabel="dB / raw"
           borderColor="rgb(139, 92, 246)"

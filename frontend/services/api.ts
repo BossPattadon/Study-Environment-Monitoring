@@ -1,7 +1,7 @@
 function apiBase(): string {
   const raw = process.env.NEXT_PUBLIC_API_URL;
   if (raw && String(raw).trim()) return String(raw).replace(/\/$/, "");
-  return "http://localhost:5000";
+  return "http://localhost:8000";
 }
 
 export function getApiBaseUrl(): string {
