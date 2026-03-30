@@ -7,3 +7,7 @@ exports.getAll = () => {
 exports.getLatest = () => {
   return model.findLatest();
 };
+
+exports.getByRange = (startIso, endIso) => {
+  return model.findByRange(startIso, endIso);
+};
