@@ -143,7 +143,7 @@ All endpoints are prefixed with `/api`.
 | `GET /api/study-index/latest` | Latest study suitability index |
 | `GET /api/study-index/daily-scores` | Daily average study scores |
 | `GET /api/study-index/hourly-averages` | Hourly average study scores |
-| `GET /api/reports` | Generated reports |
+| `GET /api/reports/daily` | Generated reports |
 
 ---
 
