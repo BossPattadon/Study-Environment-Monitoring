@@ -49,8 +49,8 @@ export default function AirQualityPage() {
           Air quality (external data)
         </h1>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          PM2.5 จาก <code className="font-mono text-xs">openaq_measurements</code>, AQI จาก{" "}
-          <code className="font-mono text-xs">iq_air</code>, สภาพอากาศจาก{" "}
+          PM2.5 from <code className="font-mono text-xs">openaq_measurements</code>, AQI from{" "}
+          <code className="font-mono text-xs">iq_air</code>, Weather from{" "}
           <code className="font-mono text-xs">openweather</code>.
         </p>
         <button

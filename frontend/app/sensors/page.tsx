@@ -56,7 +56,7 @@ export default function SensorsPage() {
                   : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
               }`}
             >
-              {h === "168" ? "7 วัน" : `${h} ชม.`}
+              {h === "168" ? "7 Days" : `${h} Hours`}
             </button>
           ))}
         </div>

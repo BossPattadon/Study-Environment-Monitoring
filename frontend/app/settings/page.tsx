@@ -39,8 +39,8 @@ export default function SettingsPage() {
           Settings
         </h1>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          ปรับน้ำหนักคะแนน (weights) และเกณฑ์ (thresholds) สำหรับการประเมินและหน้า Insights —
-          บันทึกในเบราว์เซอร์ (localStorage).
+          Set weights and thresholds for evaluation and the Insights page -
+          saved in the browser.
         </p>
       </header>
 
