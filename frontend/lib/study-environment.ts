@@ -122,17 +122,10 @@ function scoreHumidity(h: number | null): number | null {
   return clamp(100 - edge * 3, 0, 100);
 }
 
-/**
- * Light: supports analog 0–1023 (brighter = higher) or lux-style large values.
- */
+/** Light in lux: 0 at 150 lx, 100 at 650 lx. */
 function scoreLight(l: number | null): number | null {
   if (l == null) return null;
-  if (l > 3000) {
-    // Treat as lux: <300 poor, 300–500 moderate, >500 good
-    return clamp((l - 150) / 5, 0, 100);
-  }
-  // 10-bit style
-  return clamp((l / 650) * 100, 0, 100);
+  return clamp((l - 150) / 5, 0, 100);
 }
 
 /**
@@ -268,7 +261,7 @@ export function assessEnvironment(
 
   if (reading.light != null) {
     const lowLight =
-      reading.light < th.lightMinAdc || (l != null && l < 55);
+      reading.light < th.lightMinLux || (l != null && l < 55);
     if (lowLight) {
       recommendations.push(
         "Lighting looks low for long reading — turn on a desk lamp."
@@ -386,7 +379,7 @@ export function getProblemRecommendationPairs(
     });
   }
 
-  if (reading.light != null && reading.light < th.lightMinAdc) {
+  if (reading.light != null && reading.light < th.lightMinLux) {
     out.push({
       problem: "Light Insufficient",
       recommendation: "Use a desk lamp or move closer to window light to reduce eye strain.",
@@ -520,6 +513,5 @@ export function formatNoiseDisplay(raw: number | null): string {
 
 export function formatLightDisplay(raw: number | null): string {
   if (raw == null) return "—";
-  if (raw > 3000) return `${Math.round(raw)} lx (assumed)`;
-  return `${Math.round(raw)} (ADC)`;
+  return `${Math.round(raw)} lux`;
 }

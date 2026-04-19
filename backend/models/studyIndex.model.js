@@ -55,3 +55,15 @@ exports.findHourlyAverages = () => {
   });
 };
 
+exports.create = (data) => {
+  return new Promise((resolve, reject) => {
+    db.query(
+      "INSERT INTO `study_index` SET ?",
+      [data],
+      (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
+      }
+    );
+  });
+};

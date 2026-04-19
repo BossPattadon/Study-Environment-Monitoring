@@ -81,7 +81,7 @@ export function EnvironmentTrendChart({ rows }: Props) {
 
     if (hasLight) {
       datasets.push({
-        label: "Light (raw / lx)",
+        label: "Light (lux)",
         data: toSeries(light),
         borderColor: "rgb(234, 179, 8)",
         backgroundColor: "rgba(234, 179, 8, 0.12)",

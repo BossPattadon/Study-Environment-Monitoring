@@ -171,17 +171,17 @@ export default function SettingsPage() {
                 }
               />
             </Field>
-            <Field label="Light min (ADC)">
+            <Field label="Light min (lux)">
               <input
                 type="number"
                 className="rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                value={draft.thresholds.lightMinAdc}
+                value={draft.thresholds.lightMinLux}
                 onChange={(e) =>
                   setDraft({
                     ...draft,
                     thresholds: {
                       ...draft.thresholds,
-                      lightMinAdc: parseFloat(e.target.value) || 0,
+                      lightMinLux: parseFloat(e.target.value) || 0,
                     },
                   })
                 }

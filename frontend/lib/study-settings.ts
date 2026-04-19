@@ -12,7 +12,7 @@ export type StudySettings = {
     tempWarnAboveC: number;
     humidityLowPct: number;
     humidityHighPct: number;
-    lightMinAdc: number;
+    lightMinLux: number;
     noiseMaxDb: number;
     aqiPoorAbove: number;
     pm25PoorAbove: number;
@@ -42,7 +42,7 @@ export const defaultStudySettings: StudySettings = {
     tempWarnAboveC: 26,
     humidityLowPct: 35,
     humidityHighPct: 65,
-    lightMinAdc: 200,
+    lightMinLux: 300,
     noiseMaxDb: 65,
     aqiPoorAbove: 100,
     pm25PoorAbove: 35,

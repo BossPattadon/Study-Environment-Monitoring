@@ -92,7 +92,7 @@ export default function SensorsPage() {
             "light_intensity",
             "ldr",
           ]}
-          yLabel="raw / lux"
+          yLabel="lux"
           borderColor="rgb(234, 179, 8)"
         />
         <SingleAxisLineChart

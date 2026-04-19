@@ -36,3 +36,17 @@ exports.getByRange = async (req, res) => {
     res.status(500).json({ error: String(e.message || e) });
   }
 };
+
+const studyIndexService = require("../services/studyIndex.service");
+
+exports.saveSensorData = async (req, res) => {
+  try {
+    await service.save(req.body);
+
+    await studyIndexService.generateCurrentIndex();
+
+    res.status(201).json({ success: true });
+  } catch (e) {
+    res.status(500).send(e.message);
+  }
+};
