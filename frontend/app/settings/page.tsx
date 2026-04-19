@@ -342,11 +342,11 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <div className="flex flex-wrap gap-2 border-t border-zinc-100 pt-6 dark:border-zinc-800">
+        <div className="flex flex-col gap-2 border-t border-zinc-100 pt-6 dark:border-zinc-800 sm:flex-row sm:flex-wrap">
           <button
             type="button"
             onClick={commit}
-            className="rounded-full bg-teal-600 px-5 py-2 text-sm font-medium text-white hover:bg-teal-500"
+            className="w-full rounded-full bg-teal-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-teal-500 sm:w-auto sm:py-2"
           >
             Save settings
           </button>
@@ -356,7 +356,7 @@ export default function SettingsPage() {
               resetSettings();
               setDraft(defaultStudySettings);
             }}
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium dark:border-zinc-600"
+            className="w-full rounded-full border border-zinc-300 px-5 py-2.5 text-sm font-medium dark:border-zinc-600 sm:w-auto sm:py-2"
           >
             Reset defaults
           </button>

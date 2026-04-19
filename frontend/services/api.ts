@@ -98,6 +98,11 @@ export type DailyReportRow = {
   avg_noise: number | null;
   avg_score: number | null;
   study_sample_count: number;
+  avg_light_score: number | null;
+  avg_noise_score: number | null;
+  avg_temp_score: number | null;
+  avg_humidity_score: number | null;
+  avg_aqi_score: number | null;
 };
 
 export type DailyReportResponse = {
@@ -106,6 +111,27 @@ export type DailyReportResponse = {
   worstHour: number | null;
   hourly: { hour: number | null; avg_score: number | null; n: number }[];
 };
+
+export type BackendWeights = {
+  light: number;
+  noise: number;
+  temperature: number;
+  humidity: number;
+  air: number;
+};
+
+export async function fetchBackendWeights(): Promise<BackendWeights | null> {
+  const res = await fetch(`${apiBase()}/api/settings/weights`, { cache: "no-store" });
+  return parseJsonResponse<BackendWeights>(res);
+}
+
+export async function saveBackendWeights(weights: BackendWeights): Promise<void> {
+  await fetch(`${apiBase()}/api/settings/weights`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(weights),
+  });
+}
 
 export async function fetchDailyReport(
   limit = 90

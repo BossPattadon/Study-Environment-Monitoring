@@ -12,10 +12,11 @@ function dayKey(d) {
  * Merged daily rows from `sensor_data` + `study_index`, plus global best/worst hour from scores.
  */
 exports.getDailyReport = async (limitDays = 90) => {
-  const [sensorDaily, scoreDaily, hourly] = await Promise.all([
+  const [sensorDaily, scoreDaily, hourly, subScoreDaily] = await Promise.all([
     sensorModel.findDailyAverages(limitDays),
     studyIndexModel.findDailyScores(limitDays),
     studyIndexModel.findHourlyAverages(),
+    studyIndexModel.findDailySubScores(limitDays),
   ]);
 
   const scoreByDay = new Map();
@@ -23,9 +24,15 @@ exports.getDailyReport = async (limitDays = 90) => {
     scoreByDay.set(dayKey(r.day), r);
   }
 
+  const subScoreByDay = new Map();
+  for (const r of subScoreDaily) {
+    subScoreByDay.set(dayKey(r.day), r);
+  }
+
   const days = sensorDaily.map((row) => {
     const key = dayKey(row.day);
     const si = scoreByDay.get(key);
+    const ss = subScoreByDay.get(key);
     return {
       day: key,
       sample_count: row.sample_count != null ? Number(row.sample_count) : 0,
@@ -38,6 +45,11 @@ exports.getDailyReport = async (limitDays = 90) => {
       avg_score: si?.avg_score != null ? Number(si.avg_score) : null,
       study_sample_count:
         si?.sample_count != null ? Number(si.sample_count) : 0,
+      avg_light_score:    ss?.avg_light_score    != null ? Number(ss.avg_light_score)    : null,
+      avg_noise_score:    ss?.avg_noise_score    != null ? Number(ss.avg_noise_score)    : null,
+      avg_temp_score:     ss?.avg_temp_score     != null ? Number(ss.avg_temp_score)     : null,
+      avg_humidity_score: ss?.avg_humidity_score != null ? Number(ss.avg_humidity_score) : null,
+      avg_aqi_score:      ss?.avg_aqi_score      != null ? Number(ss.avg_aqi_score)      : null,
     };
   });
 
@@ -45,6 +57,7 @@ exports.getDailyReport = async (limitDays = 90) => {
   for (const r of scoreDaily) {
     const key = dayKey(r.day);
     if (!sensorDaySet.has(key)) {
+      const ss = subScoreByDay.get(key);
       days.push({
         day: key,
         sample_count: 0,
@@ -55,6 +68,11 @@ exports.getDailyReport = async (limitDays = 90) => {
         avg_score: r.avg_score != null ? Number(r.avg_score) : null,
         study_sample_count:
           r.sample_count != null ? Number(r.sample_count) : 0,
+        avg_light_score:    ss?.avg_light_score    != null ? Number(ss.avg_light_score)    : null,
+        avg_noise_score:    ss?.avg_noise_score    != null ? Number(ss.avg_noise_score)    : null,
+        avg_temp_score:     ss?.avg_temp_score     != null ? Number(ss.avg_temp_score)     : null,
+        avg_humidity_score: ss?.avg_humidity_score != null ? Number(ss.avg_humidity_score) : null,
+        avg_aqi_score:      ss?.avg_aqi_score      != null ? Number(ss.avg_aqi_score)      : null,
       });
     }
   }

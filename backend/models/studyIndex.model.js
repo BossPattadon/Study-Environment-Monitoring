@@ -34,6 +34,31 @@ exports.findDailyScores = (limitDays = 90) => {
   });
 };
 
+/** Daily averages of each sub-score from `study_index`. */
+exports.findDailySubScores = (limitDays = 90) => {
+  return new Promise((resolve, reject) => {
+    db.query(
+      `SELECT
+        DATE(\`timestamp\`) AS day,
+        AVG(CAST(\`light_score\`    AS DECIMAL(10,2))) AS avg_light_score,
+        AVG(CAST(\`noise_score\`    AS DECIMAL(10,2))) AS avg_noise_score,
+        AVG(CAST(\`temp_score\`     AS DECIMAL(10,2))) AS avg_temp_score,
+        AVG(CAST(\`humidity_score\` AS DECIMAL(10,2))) AS avg_humidity_score,
+        AVG(CAST(\`aqi_score\`      AS DECIMAL(10,2))) AS avg_aqi_score
+      FROM \`study_index\`
+      WHERE \`timestamp\` IS NOT NULL
+      GROUP BY DATE(\`timestamp\`)
+      ORDER BY day DESC
+      LIMIT ?`,
+      [limitDays],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows ?? []);
+      }
+    );
+  });
+};
+
 /** Average score by hour-of-day (0–23) for best / worst study times. */
 exports.findHourlyAverages = () => {
   return new Promise((resolve, reject) => {

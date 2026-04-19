@@ -7,6 +7,7 @@ const openaqRoutes = require("./routes/openaq.routes");
 const openweatherRoutes = require("./routes/openweather.routes");
 const studyIndexRoutes = require("./routes/studyIndex.routes");
 const reportsRoutes = require("./routes/reports.routes");
+const settingsRoutes = require("./routes/settings.routes");
 
 const app = express();
 
@@ -19,5 +20,6 @@ app.use("/api/openaq", openaqRoutes);
 app.use("/api/openweather", openweatherRoutes);
 app.use("/api/study-index", studyIndexRoutes);
 app.use("/api/reports", reportsRoutes);
+app.use("/api/settings", settingsRoutes);
 
 module.exports = app;

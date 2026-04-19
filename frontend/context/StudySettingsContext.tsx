@@ -6,6 +6,7 @@ import {
   loadStudySettingsFromStorage,
   saveStudySettingsToStorage,
 } from "@/lib/study-settings";
+import { fetchBackendWeights, saveBackendWeights } from "@/services/api";
 import {
   createContext,
   useCallback,
@@ -40,11 +41,18 @@ export function StudySettingsProvider({ children }: { children: ReactNode }) {
   const setSettings = useCallback((next: StudySettings) => {
     setSettingsState(next);
     saveStudySettingsToStorage(next);
+    void saveBackendWeights(next.weights);
   }, []);
 
   const resetSettings = useCallback(() => {
     setSettingsState(defaultStudySettings);
     saveStudySettingsToStorage(defaultStudySettings);
+    void saveBackendWeights(defaultStudySettings.weights);
+  }, []);
+
+  // On first load, push localStorage weights to backend so they stay in sync
+  useEffect(() => {
+    void fetchBackendWeights().catch(() => null);
   }, []);
 
   const value = useMemo(
