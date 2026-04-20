@@ -10,6 +10,7 @@ const nav: { href: string; label: string }[] = [
   { href: "/air", label: "Air quality" },
   { href: "/insights", label: "Insights" },
   { href: "/history", label: "History" },
+  { href: "/forecast", label: "Forecast" },
   { href: "/settings", label: "Settings" },
 ];
 

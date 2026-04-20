@@ -133,6 +133,58 @@ export async function saveBackendWeights(weights: BackendWeights): Promise<void>
   });
 }
 
+export type IqAirHistoryRow = { ts: string; aqi_us: number | null; main_pollutant: string | null };
+export type OpenaqHistoryRow = { ts: string; pm25: number | null; pm10: number | null };
+export type OpenweatherHistoryRow = { ts: string; temperature: number | null; humidity: number | null; description: string | null };
+
+export async function fetchIqAirHistory(days = 7): Promise<IqAirHistoryRow[]> {
+  const u = new URL(`${apiBase()}/api/iq-air/history`);
+  u.searchParams.set("days", String(days));
+  const res = await fetch(u.toString(), { cache: "no-store" });
+  const data = await parseJsonResponse<unknown>(res);
+  return Array.isArray(data) ? (data as IqAirHistoryRow[]) : [];
+}
+
+export async function fetchOpenaqHistory(days = 7): Promise<OpenaqHistoryRow[]> {
+  const u = new URL(`${apiBase()}/api/openaq/history`);
+  u.searchParams.set("days", String(days));
+  const res = await fetch(u.toString(), { cache: "no-store" });
+  const data = await parseJsonResponse<unknown>(res);
+  return Array.isArray(data) ? (data as OpenaqHistoryRow[]) : [];
+}
+
+export async function fetchOpenweatherHistory(days = 7): Promise<OpenweatherHistoryRow[]> {
+  const u = new URL(`${apiBase()}/api/openweather/history`);
+  u.searchParams.set("days", String(days));
+  const res = await fetch(u.toString(), { cache: "no-store" });
+  const data = await parseJsonResponse<unknown>(res);
+  return Array.isArray(data) ? (data as OpenweatherHistoryRow[]) : [];
+}
+
+export type ForecastEntry = {
+  timestamp: string;
+  total_score: number;
+  light_score: number;
+  noise_score: number;
+  temp_score: number;
+  humidity_score: number;
+  aqi_score: number;
+};
+
+export type ForecastResponse = {
+  trained_on: number;
+  insufficient_data: boolean;
+  recent: ForecastEntry[];
+  predictions: ForecastEntry[];
+};
+
+export async function fetchForecast(hours = 24): Promise<ForecastResponse | null> {
+  const u = new URL(`${apiBase()}/api/forecast`);
+  u.searchParams.set("hours", String(hours));
+  const res = await fetch(u.toString(), { cache: "no-store" });
+  return parseJsonResponse<ForecastResponse>(res);
+}
+
 export async function fetchDailyReport(
   limit = 90
 ): Promise<DailyReportResponse | null> {
