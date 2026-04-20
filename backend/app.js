@@ -1,5 +1,9 @@
 const express = require("express");
 const cors = require("cors");
+const swaggerUi = require("swagger-ui-express");
+const yaml = require("js-yaml");
+const fs = require("fs");
+const path = require("path");
 
 const sensorRoutes = require("./routes/sensor.routes");
 const iqAirRoutes = require("./routes/iqAir.routes");
@@ -10,6 +14,11 @@ const reportsRoutes = require("./routes/reports.routes");
 const settingsRoutes = require("./routes/settings.routes");
 
 const app = express();
+
+const openApiSpec = yaml.load(
+  fs.readFileSync(path.join(__dirname, "openapi.yaml"), "utf8")
+);
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openApiSpec));
 
 app.use(cors());
 app.use(express.json());

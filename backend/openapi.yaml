@@ -1,0 +1,682 @@
+openapi: 3.0.3
+info:
+  title: Study Environment Monitoring API
+  description: >
+    REST API for collecting IoT sensor readings, ingesting third-party air-quality
+    and weather data, and serving a derived study-suitability index computed from
+    weighted sub-scores (light, noise, temperature, humidity, AQI).
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+
+tags:
+  - name: Sensors
+    description: IoT sensor readings (temperature, humidity, light, noise, PIR)
+  - name: Air Quality
+    description: Third-party air-quality data (IQAir, OpenAQ)
+  - name: Weather
+    description: OpenWeatherMap data
+  - name: Study Index
+    description: Derived study-suitability index computed from all sources
+  - name: Reports
+    description: Aggregated daily/hourly reports across all data sources
+  - name: Settings
+    description: Application settings (scoring weights)
+
+paths:
+
+  # ── Sensors ──────────────────────────────────────────────────────────────────
+
+  /api/sensors:
+    get:
+      tags: [Sensors]
+      summary: Get all sensor readings
+      responses:
+        "200":
+          description: Array of all sensor readings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SensorReading"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags: [Sensors]
+      summary: Submit a new sensor reading
+      description: >
+        Saves the sensor payload and immediately triggers study-index
+        computation using the current scoring weights.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SensorReadingInput"
+      responses:
+        "201":
+          description: Reading saved and study index computed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/sensors/latest:
+    get:
+      tags: [Sensors]
+      summary: Get the most recent sensor reading
+      responses:
+        "200":
+          description: Latest sensor reading, or null if none exists
+          content:
+            application/json:
+              schema:
+                nullable: true
+                oneOf:
+                  - $ref: "#/components/schemas/SensorReading"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/sensors/range:
+    get:
+      tags: [Sensors]
+      summary: Get sensor readings within a time range
+      parameters:
+        - name: start
+          in: query
+          required: true
+          description: Start of range (ISO 8601 datetime)
+          schema:
+            type: string
+            format: date-time
+            example: "2025-01-01T00:00:00Z"
+        - name: end
+          in: query
+          required: true
+          description: End of range (ISO 8601 datetime)
+          schema:
+            type: string
+            format: date-time
+            example: "2025-01-31T23:59:59Z"
+      responses:
+        "200":
+          description: Sensor readings within the specified range
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SensorReading"
+        "400":
+          description: Missing or invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ── Air Quality ───────────────────────────────────────────────────────────────
+
+  /api/iq-air/latest:
+    get:
+      tags: [Air Quality]
+      summary: Get the latest IQAir reading
+      responses:
+        "200":
+          description: Latest IQAir row, or null if none exists
+          content:
+            application/json:
+              schema:
+                nullable: true
+                oneOf:
+                  - $ref: "#/components/schemas/IqAirReading"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/openaq/latest:
+    get:
+      tags: [Air Quality]
+      summary: Get the latest OpenAQ measurement
+      responses:
+        "200":
+          description: Latest OpenAQ row, or null if none exists
+          content:
+            application/json:
+              schema:
+                nullable: true
+                oneOf:
+                  - $ref: "#/components/schemas/OpenaqMeasurement"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ── Weather ───────────────────────────────────────────────────────────────────
+
+  /api/openweather/latest:
+    get:
+      tags: [Weather]
+      summary: Get the latest OpenWeatherMap reading
+      responses:
+        "200":
+          description: Latest OpenWeatherMap row, or null if none exists
+          content:
+            application/json:
+              schema:
+                nullable: true
+                oneOf:
+                  - $ref: "#/components/schemas/OpenweatherReading"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ── Study Index ───────────────────────────────────────────────────────────────
+
+  /api/study-index/latest:
+    get:
+      tags: [Study Index]
+      summary: Get the latest study-suitability index entry
+      description: >
+        Returns the most recently computed study index row, which includes
+        individual sub-scores (light, noise, temperature, humidity, AQI) and
+        a weighted `total_score` (0–100) with a textual `status`.
+      responses:
+        "200":
+          description: Latest study index entry, or null if none exists
+          content:
+            application/json:
+              schema:
+                nullable: true
+                oneOf:
+                  - $ref: "#/components/schemas/StudyIndexEntry"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/study-index/daily-scores:
+    get:
+      tags: [Study Index]
+      summary: Get daily average study scores
+      responses:
+        "200":
+          description: Daily average total scores
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DailyScore"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/study-index/hourly-averages:
+    get:
+      tags: [Study Index]
+      summary: Get average study score by hour of day (0–23)
+      description: >
+        Aggregates all historical study index entries by hour-of-day so callers
+        can identify the best and worst study hours.
+      responses:
+        "200":
+          description: Hourly average scores
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HourlyAverage"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ── Reports ───────────────────────────────────────────────────────────────────
+
+  /api/reports/daily:
+    get:
+      tags: [Reports]
+      summary: Get a daily aggregated report
+      description: >
+        Returns daily averages of raw sensor measurements and study sub-scores,
+        the overall best and worst study hours, and a per-hour score breakdown.
+        This endpoint integrates data from `sensor_data` and `study_index`
+        into a single response that is not available from any individual source.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Number of days to include (1–365, default 90)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+            default: 90
+      responses:
+        "200":
+          description: Aggregated daily report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyReportResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ── Settings ──────────────────────────────────────────────────────────────────
+
+  /api/settings/weights:
+    get:
+      tags: [Settings]
+      summary: Get current scoring weights
+      description: >
+        Returns the raw weights used when computing `total_score` in the study
+        index. Weights are normalised to fractions summing to 1 at scoring time.
+      responses:
+        "200":
+          description: Current weights
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Weights"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      tags: [Settings]
+      summary: Update scoring weights
+      description: >
+        Persists new weights to the server. All five fields must be non-negative
+        numbers. The next study index computation will use the updated weights.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Weights"
+            example:
+              light: 2
+              noise: 3
+              temperature: 1
+              humidity: 1
+              air: 3
+      responses:
+        "200":
+          description: Saved weights
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Weights"
+        "400":
+          description: Invalid weight value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+# ── Components ────────────────────────────────────────────────────────────────
+
+components:
+
+  schemas:
+
+    SensorReading:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 42
+        temperature:
+          type: number
+          format: float
+          description: Ambient temperature in °C
+          example: 24.5
+        humidity:
+          type: number
+          format: float
+          description: Relative humidity in %RH
+          example: 55.2
+        light_level:
+          type: integer
+          description: Raw ADC value from KY-018 photoresistor (0–1023; lower = brighter)
+          example: 310
+        noise_level:
+          type: integer
+          description: Raw ADC value from sound sensor (higher = louder)
+          example: 590
+        pir_motion:
+          type: boolean
+          description: PIR motion detected
+          example: false
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-04-18T14:32:00Z"
+
+    SensorReadingInput:
+      type: object
+      required: [temperature, humidity, light_level, noise_level]
+      properties:
+        temperature:
+          type: number
+          format: float
+          example: 24.5
+        humidity:
+          type: number
+          format: float
+          example: 55.2
+        light_level:
+          type: integer
+          example: 310
+        noise_level:
+          type: integer
+          example: 590
+        pir_motion:
+          type: boolean
+          example: false
+
+    IqAirReading:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 10
+        aqi_us:
+          type: integer
+          description: US AQI value
+          example: 42
+        main_pollutant:
+          type: string
+          example: p2
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-04-18T14:00:00Z"
+
+    OpenaqMeasurement:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 7
+        pm25:
+          type: number
+          format: float
+          description: PM2.5 concentration in µg/m³
+          example: 12.4
+        pm10:
+          type: number
+          format: float
+          description: PM10 concentration in µg/m³
+          example: 18.1
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-04-18T13:00:00Z"
+
+    OpenweatherReading:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 5
+        temperature:
+          type: number
+          format: float
+          description: Outdoor temperature in °C
+          example: 32.1
+        humidity:
+          type: number
+          format: float
+          description: Outdoor relative humidity in %RH
+          example: 78.0
+        description:
+          type: string
+          example: scattered clouds
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-04-18T14:00:00Z"
+
+    StudyIndexEntry:
+      type: object
+      description: >
+        Computed study-suitability index derived from IoT sensor readings and
+        third-party air-quality data. Not available from any single source.
+      properties:
+        id:
+          type: integer
+          example: 101
+        light_score:
+          type: number
+          format: float
+          description: Light sub-score (0–100); ideal 300–500 lux
+          example: 87.0
+        noise_score:
+          type: number
+          format: float
+          description: Noise sub-score (0–100); based on ADC quiet baseline ~620
+          example: 100.0
+        temp_score:
+          type: number
+          format: float
+          description: Temperature sub-score (0–100); ideal 23–26 °C
+          example: 95.0
+        humidity_score:
+          type: number
+          format: float
+          description: Humidity sub-score (0–100); ideal 40–60 %RH
+          example: 90.0
+        aqi_score:
+          type: number
+          format: float
+          description: AQI sub-score (0–100) based on US EPA breakpoints
+          example: 100.0
+        pir_score:
+          type: number
+          format: float
+          description: PIR motion score (100 if motion detected, else 0)
+          example: 0.0
+        total_score:
+          type: number
+          format: float
+          description: Weighted composite score (0–100)
+          example: 94.4
+        status:
+          type: string
+          enum: [Good, Moderate, Poor]
+          description: Textual label derived from total_score thresholds
+          example: Good
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-04-18T14:32:01Z"
+
+    DailyScore:
+      type: object
+      properties:
+        day:
+          type: string
+          format: date
+          example: "2025-04-18"
+        avg_score:
+          type: number
+          format: float
+          nullable: true
+          example: 78.3
+        sample_count:
+          type: integer
+          example: 48
+
+    HourlyAverage:
+      type: object
+      properties:
+        hour_of_day:
+          type: integer
+          minimum: 0
+          maximum: 23
+          example: 9
+        avg_score:
+          type: number
+          format: float
+          nullable: true
+          example: 83.1
+        n:
+          type: integer
+          description: Number of readings that contributed to this average
+          example: 120
+
+    DailyReportRow:
+      type: object
+      properties:
+        day:
+          type: string
+          format: date
+          example: "2025-04-18"
+        sample_count:
+          type: integer
+          example: 48
+        avg_temperature:
+          type: number
+          format: float
+          nullable: true
+          example: 24.8
+        avg_humidity:
+          type: number
+          format: float
+          nullable: true
+          example: 54.0
+        avg_light:
+          type: number
+          format: float
+          nullable: true
+          description: Daily average raw ADC light value
+          example: 320.5
+        avg_noise:
+          type: number
+          format: float
+          nullable: true
+          description: Daily average raw ADC noise value
+          example: 601.2
+        avg_score:
+          type: number
+          format: float
+          nullable: true
+          example: 78.3
+        study_sample_count:
+          type: integer
+          example: 46
+        avg_light_score:
+          type: number
+          format: float
+          nullable: true
+          example: 88.0
+        avg_noise_score:
+          type: number
+          format: float
+          nullable: true
+          example: 97.5
+        avg_temp_score:
+          type: number
+          format: float
+          nullable: true
+          example: 93.0
+        avg_humidity_score:
+          type: number
+          format: float
+          nullable: true
+          example: 90.0
+        avg_aqi_score:
+          type: number
+          format: float
+          nullable: true
+          example: 100.0
+
+    DailyReportResponse:
+      type: object
+      properties:
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyReportRow"
+        bestHour:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 23
+          description: Hour of day with the highest average study score
+          example: 9
+        worstHour:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 23
+          description: Hour of day with the lowest average study score
+          example: 22
+        hourly:
+          type: array
+          items:
+            type: object
+            properties:
+              hour:
+                type: integer
+                nullable: true
+                example: 9
+              avg_score:
+                type: number
+                format: float
+                nullable: true
+                example: 83.1
+              n:
+                type: integer
+                example: 120
+
+    Weights:
+      type: object
+      required: [light, noise, temperature, humidity, air]
+      properties:
+        light:
+          type: number
+          minimum: 0
+          description: Relative weight for light score
+          example: 1
+        noise:
+          type: number
+          minimum: 0
+          description: Relative weight for noise score
+          example: 1
+        temperature:
+          type: number
+          minimum: 0
+          description: Relative weight for temperature score
+          example: 1
+        humidity:
+          type: number
+          minimum: 0
+          description: Relative weight for humidity score
+          example: 1
+        air:
+          type: number
+          minimum: 0
+          description: Relative weight for AQI score
+          example: 1
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Query params `start` and `end` (ISO datetimes) are required."
+
+  responses:
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
