@@ -24,35 +24,38 @@ function calculateLightScore(adcRaw) {
   return Math.max(0, Math.round(75 - ((lux - 1000) / 1000) * 75));
 }
 
-// Noise: ADC quiet baseline ~580–620; loud ~800+
+// Noise: ADC from sound sensor; higher ADC = louder
 function calculateNoiseScore(adc) {
   if (adc == null) return 50;
-  const QUIET = 620;
-  const LOUD  = 800;
-  if (adc <= QUIET) return 100;
-  if (adc >= LOUD)  return 0;
-  return Math.max(0, Math.round(100 - ((adc - QUIET) / (LOUD - QUIET)) * 100));
+  if (adc <= 620) return 100;
+  if (adc <= 750) return Math.max(0, Math.round(100 - ((adc - 620) / 130) * 40));
+  if (adc <= 900) return Math.max(0, Math.round(60  - ((adc - 750) / 150) * 55));
+  return 0;
 }
 
-// Temp / Humidity: symmetric decay from ideal midpoint, no artificial floor
-function calculateRangeScore(value, min, max) {
-  if (value == null) return 50;
-  if (value >= min && value <= max) return 100;
-  const mid   = (min + max) / 2;
-  const range = (max - min) / 2;       // half-width of perfect band
-  const excess = Math.abs(value - mid) - range;
-  // Lose ~5 pts per unit outside the perfect band
-  return Math.max(0, Math.round(100 - excess * 5));
+// Temperature: ideal 20–23°C; hotter penalised harder than cooler
+function calculateTempScore(temp) {
+  if (temp == null) return 50;
+  if (temp >= 20 && temp <= 23) return 100;
+  if (temp < 20) return Math.max(0, Math.round(100 - (20 - temp) * 5));
+  return Math.max(0, Math.round(100 - (temp - 23) * 7));
 }
 
-// AQI: US EPA breakpoints mapped to 0–100 score
+// Humidity: ideal 40–60%; dry penalised harder than humid
+function calculateHumidityScore(humidity) {
+  if (humidity == null) return 50;
+  if (humidity >= 40 && humidity <= 60) return 100;
+  if (humidity < 40) return Math.max(0, Math.round(100 - (40 - humidity) * 4));
+  return Math.max(0, Math.round(100 - (humidity - 60) * 3));
+}
+
+// AQI: continuous linear interpolation between EPA breakpoints
 function calculateAqiScore(aqi) {
   if (aqi == null) return 50;
   if (aqi <=  50) return 100;
-  if (aqi <= 100) return Math.round(100 - ((aqi -  50) /  50) * 25); // 100 → 75
-  if (aqi <= 150) return Math.round( 75 - ((aqi - 100) /  50) * 25); //  75 → 50
-  if (aqi <= 200) return Math.round( 50 - ((aqi - 150) /  50) * 25); //  50 → 25
-  if (aqi <= 300) return Math.round( 25 - ((aqi - 200) / 100) * 25); //  25 →  0
+  if (aqi <= 100) return Math.round(100 - ((aqi -  50) /  50) * 30);
+  if (aqi <= 150) return Math.round( 70 - ((aqi - 100) /  50) * 30);
+  if (aqi <= 200) return Math.round( 40 - ((aqi - 150) /  50) * 30);
   return 0;
 }
 
@@ -65,8 +68,8 @@ exports.generateCurrentIndex = async () => {
 
     const light_score    = calculateLightScore(sensor.light_level);
     const noise_score    = calculateNoiseScore(sensor.noise_level);
-    const temp_score     = calculateRangeScore(sensor.temperature, 23, 26);
-    const humidity_score = calculateRangeScore(sensor.humidity, 40, 60);
+    const temp_score     = calculateTempScore(sensor.temperature);
+    const humidity_score = calculateHumidityScore(sensor.humidity);
     const aqi_score      = calculateAqiScore(aqiRow?.aqi_us ?? null);
 
     const w = appWeights.normalize(appWeights.load());
@@ -80,7 +83,7 @@ exports.generateCurrentIndex = async () => {
 
     const status =
       total >= 80 ? "Good" :
-      total >= 50 ? "Moderate" :
+      total >= 55 ? "Moderate" :
                     "Poor";
 
     return await studyIndexModel.create({

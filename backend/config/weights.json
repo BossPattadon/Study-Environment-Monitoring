@@ -1,7 +1,7 @@
 {
-  "light": 2,
-  "noise": 2,
-  "temperature": 2,
-  "humidity": 2,
-  "air": 2
+  "light": 25,
+  "noise": 30,
+  "temperature": 25,
+  "humidity": 10,
+  "air": 10
 }

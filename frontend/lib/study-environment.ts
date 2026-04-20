@@ -104,62 +104,60 @@ function weightedAverageScore(
   return den > 0 ? num / den : null;
 }
 
-/** Subjective score 0–100 for temperature (°C); peaks at `tempIdealC`. */
+/** Temperature: ideal band [idealC−1.5, idealC+1.5]; hotter penalised harder than cooler. */
 function scoreTemperature(
   c: number | null,
-  ideal: number = defaultStudySettings.thresholds.tempIdealC
+  idealC: number = defaultStudySettings.thresholds.tempIdealC
 ): number | null {
   if (c == null) return null;
-  const d = Math.abs(c - ideal);
-  return clamp(100 - d * 8, 0, 100);
+  const lo = idealC - 1.5;
+  const hi = idealC + 1.5;
+  if (c >= lo && c <= hi) return 100;
+  if (c < lo) return clamp(Math.round(100 - (lo - c) * 5), 0, 100);
+  return clamp(Math.round(100 - (c - hi) * 7), 0, 100);
 }
 
-/** Humidity % : comfortable band between 40–55 (fixed curve); edges soften outside. */
+/** Humidity: ideal 40–60%; dry penalised harder than humid (tropical context). */
 function scoreHumidity(h: number | null): number | null {
   if (h == null) return null;
-  if (h >= 40 && h <= 55) return 100;
-  const edge = h < 40 ? 40 - h : h - 55;
-  return clamp(100 - edge * 3, 0, 100);
+  if (h >= 40 && h <= 60) return 100;
+  if (h < 40) return clamp(Math.round(100 - (40 - h) * 4), 0, 100);
+  return clamp(Math.round(100 - (h - 60) * 3), 0, 100);
 }
 
-/** Light in lux: 0 at 150 lx, 100 at 650 lx. */
+/** Light in lux: ideal 300–500 lux = 100; linear penalty below; gentle penalty above. */
 function scoreLight(l: number | null): number | null {
   if (l == null) return null;
-  return clamp((l - 150) / 5, 0, 100);
+  if (l >= 300 && l <= 500) return 100;
+  if (l < 300) return clamp(Math.round((l / 300) * 100), 0, 100);
+  if (l <= 1000) return clamp(Math.round(100 - ((l - 500) / 500) * 25), 0, 100);
+  return clamp(Math.round(75 - ((l - 1000) / 1000) * 75), 0, 100);
 }
 
-/**
- * Noise: dB if ≤120, else map raw ADC 0–1023 to an approximate desk dB band.
- */
-function effectiveNoiseDb(n: number): number {
-  if (n <= 120) return n;
-  return 38 + (n / 1023) * 32;
-}
-
+/** Noise: raw ADC from sound sensor; higher ADC = louder. */
 function scoreNoise(n: number | null): number | null {
   if (n == null) return null;
-  const db = effectiveNoiseDb(n);
-  if (db <= 45) return 100;
-  if (db <= 55) return 82;
-  if (db <= 65) return 62;
-  if (db <= 75) return 40;
-  return clamp(55 - (db - 75) * 2, 0, 40);
+  if (n <= 620) return 100;
+  if (n <= 750) return clamp(Math.round(100 - ((n - 620) / 130) * 40), 0, 100);
+  if (n <= 900) return clamp(Math.round(60 - ((n - 750) / 150) * 55), 0, 100);
+  return 0;
 }
 
+/** Air quality: continuous linear interpolation between EPA AQI breakpoints. */
 function scoreAir(aqi: number | null, pm25: number | null): number | null {
   if (aqi != null) {
     if (aqi <= 50) return 100;
-    if (aqi <= 100) return 75;
-    if (aqi <= 150) return 50;
-    if (aqi <= 200) return 30;
-    return 15;
+    if (aqi <= 100) return Math.round(100 - ((aqi - 50) / 50) * 30);
+    if (aqi <= 150) return Math.round(70 - ((aqi - 100) / 50) * 30);
+    if (aqi <= 200) return Math.round(40 - ((aqi - 150) / 50) * 30);
+    return 0;
   }
   if (pm25 != null) {
     if (pm25 <= 12) return 100;
-    if (pm25 <= 35) return 72;
-    if (pm25 <= 55) return 50;
-    if (pm25 <= 150) return 28;
-    return 12;
+    if (pm25 <= 35) return Math.round(100 - ((pm25 - 12) / 23) * 30);
+    if (pm25 <= 55) return Math.round(70 - ((pm25 - 35) / 20) * 30);
+    if (pm25 <= 150) return Math.round(40 - ((pm25 - 55) / 95) * 30);
+    return 0;
   }
   return null;
 }
@@ -269,14 +267,10 @@ export function assessEnvironment(
     }
   }
 
-  if (reading.noise != null) {
-    const db = effectiveNoiseDb(reading.noise);
-    const noisy = db > th.noiseMaxDb || (n != null && n < 55);
-    if (noisy) {
-      recommendations.push(
-        "Noise may break focus — close the door, reduce sources, or try earplugs."
-      );
-    }
+  if (n != null && n < 60) {
+    recommendations.push(
+      "Noise may break focus — close the door, reduce sources, or try earplugs."
+    );
   }
 
   if (
@@ -386,15 +380,12 @@ export function getProblemRecommendationPairs(
     });
   }
 
-  if (reading.noise != null) {
-    const db = effectiveNoiseDb(reading.noise);
-    if (db > th.noiseMaxDb) {
-      out.push({
-        problem: "Noise Too High",
-        recommendation:
-          "Move to a quieter area, close doors/windows facing noise, or use noise‑cancelling headphones.",
-      });
-    }
+  if (reading.noise != null && (scoreNoise(reading.noise) ?? 100) < 60) {
+    out.push({
+      problem: "Noise Too High",
+      recommendation:
+        "Move to a quieter area, close doors/windows facing noise, or use noise‑cancelling headphones.",
+    });
   }
 
   if (reading.aqi != null && reading.aqi > th.aqiPoorAbove) {

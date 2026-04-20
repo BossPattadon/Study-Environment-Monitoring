@@ -2,7 +2,7 @@ const fs   = require("fs");
 const path = require("path");
 
 const FILE = path.join(__dirname, "weights.json");
-const DEFAULT = { light: 1, noise: 1, temperature: 1, humidity: 1, air: 1 };
+const DEFAULT = { light: 25, noise: 30, temperature: 25, humidity: 10, air: 10 };
 
 function load() {
   try {
