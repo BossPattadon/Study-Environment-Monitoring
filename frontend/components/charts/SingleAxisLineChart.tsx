@@ -76,7 +76,10 @@ export function SingleAxisLineChart({
                 .replace(/^rgb\(/, "rgba(")
                 .replace(/\)$/, ", 0.12)")
             : undefined,
+          borderWidth: 1.5,
           tension: 0.25,
+          pointRadius: 0,
+          pointHoverRadius: 4,
           spanGaps: true,
           fill,
         },
@@ -88,6 +91,7 @@ export function SingleAxisLineChart({
     () => ({
       responsive: true,
       maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
       plugins: {
         title: {
           display: true,
@@ -99,7 +103,7 @@ export function SingleAxisLineChart({
       },
       scales: {
         x: {
-          ticks: { color: "#71717a", maxRotation: 45 },
+          ticks: { color: "#71717a", maxRotation: 45, maxTicksLimit: 8 },
           grid: { color: "rgba(113,113,122,0.12)" },
         },
         y: {

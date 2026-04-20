@@ -65,7 +65,10 @@ export function EnvironmentTrendChart({ rows }: Props) {
         borderColor: "rgb(244, 63, 94)",
         backgroundColor: "rgba(244, 63, 94, 0.15)",
         yAxisID: "y",
+        borderWidth: 1.5,
         tension: 0.25,
+        pointRadius: 0,
+        pointHoverRadius: 4,
         spanGaps: true,
       },
       {
@@ -74,7 +77,10 @@ export function EnvironmentTrendChart({ rows }: Props) {
         borderColor: "rgb(59, 130, 246)",
         backgroundColor: "rgba(59, 130, 246, 0.12)",
         yAxisID: "y1",
+        borderWidth: 1.5,
         tension: 0.25,
+        pointRadius: 0,
+        pointHoverRadius: 4,
         spanGaps: true,
       },
     ];
@@ -86,7 +92,10 @@ export function EnvironmentTrendChart({ rows }: Props) {
         borderColor: "rgb(234, 179, 8)",
         backgroundColor: "rgba(234, 179, 8, 0.12)",
         yAxisID: "y2",
+        borderWidth: 1.5,
         tension: 0.25,
+        pointRadius: 0,
+        pointHoverRadius: 4,
         spanGaps: true,
       });
     }
@@ -97,7 +106,10 @@ export function EnvironmentTrendChart({ rows }: Props) {
         borderColor: "rgb(139, 92, 246)",
         backgroundColor: "rgba(139, 92, 246, 0.12)",
         yAxisID: hasLight ? "y3" : "y2",
+        borderWidth: 1.5,
         tension: 0.25,
+        pointRadius: 0,
+        pointHoverRadius: 4,
         spanGaps: true,
       });
     }
@@ -125,7 +137,7 @@ export function EnvironmentTrendChart({ rows }: Props) {
       },
       scales: {
         x: {
-          ticks: { color: "#71717a", maxRotation: 0 },
+          ticks: { color: "#71717a", maxRotation: 0, maxTicksLimit: 8 },
           grid: { color: "rgba(113,113,122,0.15)" },
         },
         y: {

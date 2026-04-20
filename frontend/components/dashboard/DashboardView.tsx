@@ -15,14 +15,23 @@ import {
   type Suitability,
 } from "@/lib/study-environment";
 import {
+  fetchIqAirHistory,
   fetchLatestIqAir,
   fetchLatestOpenaq,
   fetchLatestOpenweather,
   fetchLatestSensor,
   fetchLatestStudyIndex,
   fetchSensors,
+  fetchStudyIndexHistory,
   getApiBaseUrl,
+  type IqAirHistoryRow,
+  type StudyIndexHistoryRow,
 } from "@/services/api";
+import { registerChartJs } from "@/components/charts/register-chart";
+import type { ChartData, ChartOptions } from "chart.js";
+import { Line } from "react-chartjs-2";
+
+registerChartJs();
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 function num(v: unknown): number | null {
@@ -90,14 +99,88 @@ function MetricCard({
   );
 }
 
+function fmtTs(iso: string) {
+  return new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function AqiTrendChart({ rows }: { rows: IqAirHistoryRow[] }) {
+  const data: ChartData<"line"> = useMemo(() => ({
+    labels: rows.map((r) => fmtTs(r.ts)),
+    datasets: [{
+      label: "US AQI",
+      data: rows.map((r) => r.aqi_us),
+      borderColor: "rgb(239,68,68)",
+      backgroundColor: "rgba(239,68,68,0.08)",
+      borderWidth: 1.5,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      tension: 0.3,
+      spanGaps: true,
+      fill: false,
+    }],
+  }), [rows]);
+
+  const options: ChartOptions<"line"> = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: {
+      legend: { display: false },
+      title: { display: false },
+    },
+    scales: {
+      x: { ticks: { color: "#71717a", maxRotation: 0, maxTicksLimit: 6, font: { size: 10 } }, grid: { color: "rgba(113,113,122,0.12)" } },
+      y: { ticks: { color: "#71717a", font: { size: 10 } }, grid: { color: "rgba(113,113,122,0.10)" }, title: { display: true, text: "AQI", color: "#71717a" } },
+    },
+  }), []);
+
+  if (!rows.length) return <div className="flex h-40 items-center justify-center text-sm text-zinc-400">No data</div>;
+  return <div className="h-44 w-full"><Line data={data} options={options} /></div>;
+}
+
+function StudyScoreChart({ rows }: { rows: StudyIndexHistoryRow[] }) {
+  const data: ChartData<"line"> = useMemo(() => ({
+    labels: rows.map((r) => fmtTs(r.ts)),
+    datasets: [{
+      label: "Study score",
+      data: rows.map((r) => r.total_score),
+      borderColor: "rgb(20,184,166)",
+      backgroundColor: "rgba(20,184,166,0.10)",
+      borderWidth: 1.5,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      tension: 0.3,
+      spanGaps: true,
+      fill: true,
+    }],
+  }), [rows]);
+
+  const options: ChartOptions<"line"> = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: {
+      legend: { display: false },
+      title: { display: false },
+    },
+    scales: {
+      x: { ticks: { color: "#71717a", maxRotation: 0, maxTicksLimit: 6, font: { size: 10 } }, grid: { color: "rgba(113,113,122,0.12)" } },
+      y: { min: 0, max: 100, ticks: { color: "#71717a", font: { size: 10 } }, grid: { color: "rgba(113,113,122,0.10)" }, title: { display: true, text: "Score", color: "#71717a" } },
+    },
+  }), []);
+
+  if (!rows.length) return <div className="flex h-40 items-center justify-center text-sm text-zinc-400">No data</div>;
+  return <div className="h-44 w-full"><Line data={data} options={options} /></div>;
+}
+
 export function DashboardView() {
   const { settings } = useStudySettings();
   const [reading, setReading] = useState<NormalizedReading | null>(null);
   const [history, setHistory] = useState<Record<string, unknown>[]>([]);
   const [iqAir, setIqAir] = useState<Record<string, unknown> | null>(null);
-  const [studyIndex, setStudyIndex] = useState<Record<string, unknown> | null>(
-    null
-  );
+  const [studyIndex, setStudyIndex] = useState<Record<string, unknown> | null>(null);
+  const [aqiHistory, setAqiHistory] = useState<IqAirHistoryRow[]>([]);
+  const [studyHistory, setStudyHistory] = useState<StudyIndexHistoryRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
@@ -111,6 +194,8 @@ export function DashboardView() {
         oqRow,
         owRow,
         idxRow,
+        aqiHist,
+        studyHist,
       ] = await Promise.all([
         fetchLatestSensor(),
         fetchSensors(),
@@ -118,7 +203,11 @@ export function DashboardView() {
         fetchLatestOpenaq().catch(() => null),
         fetchLatestOpenweather().catch(() => null),
         fetchLatestStudyIndex().catch(() => null),
+        fetchIqAirHistory(7).catch(() => []),
+        fetchStudyIndexHistory(7).catch(() => []),
       ]);
+      setAqiHistory(aqiHist);
+      setStudyHistory(studyHist);
       const rows = Array.isArray(allRaw) ? allRaw : [];
       setHistory(rows);
       setIqAir(iqRow);
@@ -305,6 +394,19 @@ export function DashboardView() {
           </p>
           <div className="mt-3">
             <EnvironmentTrendChart rows={history} />
+          </div>
+        </section>
+
+        <section className="mt-10 grid gap-6 lg:grid-cols-2">
+          <div className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
+            <h2 className="mb-1 text-sm font-semibold text-rose-600 dark:text-rose-400">Air quality · 7-day AQI</h2>
+            <p className="mb-3 text-xs text-zinc-500">Hourly US AQI from IQAir</p>
+            <AqiTrendChart rows={aqiHistory} />
+          </div>
+          <div className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50">
+            <h2 className="mb-1 text-sm font-semibold text-teal-600 dark:text-teal-400">Study index · 7-day trend</h2>
+            <p className="mb-3 text-xs text-zinc-500">Hourly averaged total score</p>
+            <StudyScoreChart rows={studyHistory} />
           </div>
         </section>
       </div>

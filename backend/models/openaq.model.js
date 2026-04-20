@@ -1,10 +1,10 @@
 const db = require("../config/db");
 
-/** Latest row from `openaq_measurements` (OpenAQ PM2.5, etc.). */
+/** Latest row from `openaq`. */
 exports.findLatest = () => {
   return new Promise((resolve, reject) => {
     db.query(
-      "SELECT * FROM `openaq_measurements` ORDER BY `timestamp` DESC LIMIT 1",
+      "SELECT *, `value` AS pm25, `timestamp_local` AS timestamp FROM `openaq` ORDER BY `timestamp_local` DESC LIMIT 1",
       (err, rows) => {
         if (err) reject(err);
         else resolve(rows?.[0] ?? null);
@@ -13,17 +13,16 @@ exports.findLatest = () => {
   });
 };
 
-/** Recent rows ordered ascending, for charting (pivots parameter/value into pm25/pm10 columns). */
+/** Recent rows ordered ascending, for charting. value column is PM2.5. */
 exports.findRecent = (days = 7) => {
   return new Promise((resolve, reject) => {
     db.query(
       `SELECT
-        \`timestamp\` AS ts,
-        CAST(MAX(CASE WHEN \`parameter\` = 'pm25' THEN \`value\` END) AS DECIMAL(10,2)) AS pm25,
-        CAST(MAX(CASE WHEN \`parameter\` = 'pm10' THEN \`value\` END) AS DECIMAL(10,2)) AS pm10
-      FROM \`openaq_measurements\`
-      WHERE \`timestamp\` >= DATE_SUB(NOW(), INTERVAL ? DAY)
-      GROUP BY \`timestamp\`
+        \`timestamp_local\` AS ts,
+        CAST(\`value\` AS DECIMAL(10,2)) AS pm25,
+        NULL AS pm10
+      FROM \`openaq\`
+      WHERE \`timestamp_local\` >= DATE_SUB(NOW(), INTERVAL ? DAY)
       ORDER BY ts ASC`,
       [days],
       (err, rows) => {

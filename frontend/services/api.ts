@@ -133,6 +133,16 @@ export async function saveBackendWeights(weights: BackendWeights): Promise<void>
   });
 }
 
+export type StudyIndexHistoryRow = { ts: string; total_score: number | null; light_score: number | null; noise_score: number | null; temp_score: number | null; humidity_score: number | null; aqi_score: number | null };
+
+export async function fetchStudyIndexHistory(days = 7): Promise<StudyIndexHistoryRow[]> {
+  const u = new URL(`${apiBase()}/api/study-index/history`);
+  u.searchParams.set("days", String(days));
+  const res = await fetch(u.toString(), { cache: "no-store" });
+  const data = await parseJsonResponse<unknown>(res);
+  return Array.isArray(data) ? (data as StudyIndexHistoryRow[]) : [];
+}
+
 export type IqAirHistoryRow = { ts: string; aqi_us: number | null; main_pollutant: string | null };
 export type OpenaqHistoryRow = { ts: string; pm25: number | null; pm10: number | null };
 export type OpenweatherHistoryRow = { ts: string; temperature: number | null; humidity: number | null; description: string | null };

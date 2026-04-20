@@ -51,12 +51,13 @@ function lineChartOptions(title: string, yLabel: string): ChartOptions<"line"> {
   return {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: { mode: "index", intersect: false },
     plugins: {
       legend: { display: true, position: "bottom", labels: { color: "#71717a", boxWidth: 12, font: { size: 11 } } },
       title: { display: true, text: title, color: "#71717a", font: { size: 12, weight: "bold" } },
     },
     scales: {
-      x: { ticks: { color: "#71717a", maxRotation: 45, font: { size: 10 } }, grid: { color: "rgba(113,113,122,0.12)" } },
+      x: { ticks: { color: "#71717a", maxRotation: 45, font: { size: 10 }, maxTicksLimit: 8 }, grid: { color: "rgba(113,113,122,0.12)" } },
       y: { ticks: { color: "#71717a" }, grid: { color: "rgba(113,113,122,0.10)" }, title: { display: true, text: yLabel, color: "#71717a" } },
     },
   };
@@ -68,9 +69,10 @@ function makeDataset(label: string, data: (number | null)[], color: string, dash
     data,
     borderColor: color,
     backgroundColor: color.replace("rgb(", "rgba(").replace(")", ", 0.08)"),
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderDash: dashed ? [5, 4] : [],
-    pointRadius: 3,
+    pointRadius: 0,
+    pointHoverRadius: 4,
     tension: 0.3,
     spanGaps: true,
     fill: false,
@@ -98,7 +100,6 @@ function PmChart({ rows }: { rows: OpenaqHistoryRow[] }) {
     labels: rows.map((r) => fmtTs(r.ts)),
     datasets: [
       makeDataset("PM2.5 (µg/m³)", rows.map((r) => r.pm25), "rgb(139,92,246)"),
-      makeDataset("PM10 (µg/m³)", rows.map((r) => r.pm10), "rgb(99,102,241)", true),
     ],
   }), [rows]);
 
@@ -292,7 +293,6 @@ export default function AirQualityPage() {
           <h2 className="mb-1 text-xs font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">OpenAQ · latest</h2>
           <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
             <StatRow label="PM2.5" value={num(openaq?.pm25 ?? openaq?.pm2_5, " µg/m³")} />
-            <StatRow label="PM10"  value={num(openaq?.pm10, " µg/m³")} />
             <StatRow label="Recorded" value={openaq?.timestamp ? new Date(String(openaq.timestamp)).toLocaleString() : "—"} />
           </div>
         </section>

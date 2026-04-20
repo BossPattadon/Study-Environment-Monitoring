@@ -80,6 +80,32 @@ exports.findHourlyAverages = () => {
   });
 };
 
+/** Hourly-averaged total_score for the last N days, for dashboard charting. */
+exports.findRecent = (days = 7) => {
+  return new Promise((resolve, reject) => {
+    db.query(
+      `SELECT
+        DATE_FORMAT(DATE_ADD(\`timestamp\`, INTERVAL 30 MINUTE), '%Y-%m-%d %H:00:00') AS ts,
+        ROUND(AVG(\`total_score\`),    2) AS total_score,
+        ROUND(AVG(\`light_score\`),    2) AS light_score,
+        ROUND(AVG(\`noise_score\`),    2) AS noise_score,
+        ROUND(AVG(\`temp_score\`),     2) AS temp_score,
+        ROUND(AVG(\`humidity_score\`), 2) AS humidity_score,
+        ROUND(AVG(\`aqi_score\`),      2) AS aqi_score
+      FROM \`study_index\`
+      WHERE \`timestamp\` >= DATE_SUB(NOW(), INTERVAL ? DAY)
+        AND \`timestamp\` IS NOT NULL
+      GROUP BY DATE_FORMAT(DATE_ADD(\`timestamp\`, INTERVAL 30 MINUTE), '%Y-%m-%d %H:00:00')
+      ORDER BY ts ASC`,
+      [days],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows ?? []);
+      }
+    );
+  });
+};
+
 exports.create = (data) => {
   return new Promise((resolve, reject) => {
     db.query(
