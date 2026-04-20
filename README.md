@@ -59,7 +59,7 @@ Physical sensors connected to a microcontroller (Arduino / ESP) post readings to
 
 | Sensor | Measures |
 |---|---|
-| DHT11/22 | Temperature (°C), Humidity (%RH) |
+| DHT11 | Temperature (°C), Humidity (%RH) |
 | KY-018 photoresistor | Light level (ADC 0–1023; lower = brighter) |
 | Sound sensor | Noise level (ADC 0–1023) |
 | PIR | Motion detection |
