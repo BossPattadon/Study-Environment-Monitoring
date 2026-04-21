@@ -1,0 +1,509 @@
+[
+    {
+        "id": "50d099b7335b2b4a",
+        "type": "tab",
+        "label": "Flow 4",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "cdbafe3d4ba15f93",
+        "type": "mysql",
+        "z": "50d099b7335b2b4a",
+        "mydb": "db9ddce3769082bf",
+        "name": "Insert Data",
+        "x": 630,
+        "y": 180,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "31e77d3fb5fa3d36",
+        "type": "mqtt in",
+        "z": "50d099b7335b2b4a",
+        "name": "",
+        "topic": "b6710545806/sensors",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "3f41672e1dfe618b",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 220,
+        "y": 180,
+        "wires": [
+            [
+                "fbae6400c9895991",
+                "1f18e8e82abb4399"
+            ]
+        ]
+    },
+    {
+        "id": "fbae6400c9895991",
+        "type": "debug",
+        "z": "50d099b7335b2b4a",
+        "name": "debug 3",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 440,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "1f18e8e82abb4399",
+        "type": "template",
+        "z": "50d099b7335b2b4a",
+        "name": "",
+        "field": "topic",
+        "fieldType": "msg",
+        "format": "sql",
+        "syntax": "mustache",
+        "template": "INSERT INTO sensor_data\n(pir_motion, light_level, temperature, humidity, noise_level)\nVALUES ({{payload.motion}},\n{{payload.light}},\n{{payload.temperature}},\n{{payload.humidity}},\n{{payload.noise}});",
+        "output": "str",
+        "x": 440,
+        "y": 180,
+        "wires": [
+            [
+                "cdbafe3d4ba15f93"
+            ]
+        ]
+    },
+    {
+        "id": "294bb297b8d37b49",
+        "type": "inject",
+        "z": "50d099b7335b2b4a",
+        "name": "Every 1 hour",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "3600",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 2,
+        "topic": "",
+        "payload": "",
+        "payloadType": "str",
+        "x": 200,
+        "y": 320,
+        "wires": [
+            [
+                "c95ae7c9b6b5f158"
+            ]
+        ]
+    },
+    {
+        "id": "e26142b3742df8e0",
+        "type": "debug",
+        "z": "50d099b7335b2b4a",
+        "name": "debug 4",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 660,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "33a367e80847a61a",
+        "type": "inject",
+        "z": "50d099b7335b2b4a",
+        "name": "Every 1 hour",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "3600",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 2,
+        "topic": "",
+        "payload": "",
+        "payloadType": "str",
+        "x": 180,
+        "y": 500,
+        "wires": [
+            [
+                "0514ac212155868b"
+            ]
+        ]
+    },
+    {
+        "id": "0514ac212155868b",
+        "type": "http request",
+        "z": "50d099b7335b2b4a",
+        "name": "",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://api.openweathermap.org/data/2.5/weather?q=Bangkok&appid=a63785bb0bfcfa2e638e071745d906aa&units=metric",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 370,
+        "y": 500,
+        "wires": [
+            [
+                "cd34693b52774540",
+                "efba366c1c9489b9"
+            ]
+        ]
+    },
+    {
+        "id": "cd34693b52774540",
+        "type": "function",
+        "z": "50d099b7335b2b4a",
+        "name": "Function (format)",
+        "func": "// ── ตรวจ payload ──\nif (!msg.payload) {\n    node.error(\"No data from OpenWeather\");\n    return null;\n}\n\nlet data = msg.payload;\n\n// ── ดึงค่า ──\nlet temp = data.main.temp;\nlet humidity = data.main.humidity;\nlet pressure = data.main.pressure;\nlet wind = data.wind.speed;\n\nlet weather_main = data.weather[0].main;\nlet weather_desc = data.weather[0].description;\n\n// ── timestamp (unix → MySQL) ──\nlet dt = new Date(data.dt * 1000);\nlet mysqlTime = dt.toISOString().slice(0, 19).replace('T', ' ');\n\n// ── payload สำหรับ MySQL ──\nmsg.payload = [\n    temp,\n    humidity,\n    pressure,\n    wind,\n    weather_main,\n    weather_desc,\n    mysqlTime\n];\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 500,
+        "wires": [
+            [
+                "9f51a01e9e3f0f59"
+            ]
+        ]
+    },
+    {
+        "id": "9f51a01e9e3f0f59",
+        "type": "template",
+        "z": "50d099b7335b2b4a",
+        "name": "",
+        "field": "topic",
+        "fieldType": "msg",
+        "format": "handlebars",
+        "syntax": "mustache",
+        "template": "INSERT INTO openweather\n(temperature, humidity, pressure, wind_speed, weather_main, weather_desc, timestamp)\nVALUES (?, ?, ?, ?, ?, ?, ?);",
+        "output": "str",
+        "x": 600,
+        "y": 580,
+        "wires": [
+            [
+                "d8ddb203aa2e9d19"
+            ]
+        ]
+    },
+    {
+        "id": "d8ddb203aa2e9d19",
+        "type": "mysql",
+        "z": "50d099b7335b2b4a",
+        "mydb": "db9ddce3769082bf",
+        "name": "Insert OpenWeather",
+        "x": 820,
+        "y": 580,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "efba366c1c9489b9",
+        "type": "debug",
+        "z": "50d099b7335b2b4a",
+        "name": "debug 8",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 400,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "049a1fcf504a2735",
+        "type": "inject",
+        "z": "50d099b7335b2b4a",
+        "name": "Every 1 hour",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "3600",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 2,
+        "topic": "",
+        "payload": "",
+        "payloadType": "str",
+        "x": 180,
+        "y": 660,
+        "wires": [
+            [
+                "6148d3168853a14a"
+            ]
+        ]
+    },
+    {
+        "id": "6148d3168853a14a",
+        "type": "http request",
+        "z": "50d099b7335b2b4a",
+        "name": "",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://api.airvisual.com/v2/nearest_city?lat=13.845745293736233&lon=100.57014931785149&key=cd0e8cc3-b5f3-471c-9ee6-0828b485c905",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 370,
+        "y": 660,
+        "wires": [
+            [
+                "965bdee8d0c3be3b",
+                "93237ecc440942ee"
+            ]
+        ]
+    },
+    {
+        "id": "965bdee8d0c3be3b",
+        "type": "function",
+        "z": "50d099b7335b2b4a",
+        "name": "Function (format)",
+        "func": "let d = msg.payload.data;\n\nlet pollution = d.current.pollution;\nlet weather = d.current.weather;\n\nlet dt = new Date(); // IQAir free ไม่มี timestamp\nlet mysqlTime = dt.toISOString().slice(0, 19).replace('T', ' ');\n\nmsg.payload = [\n    pollution.aqius,\n    pollution.mainus,\n    null, null, null, null, null, null,   // pm25, pm10 etc (optional)\n\n    weather.tp,\n    weather.hu,\n    weather.pr,\n    weather.ws,\n    weather.wd,\n\n    d.city,\n    d.country,\n\n    mysqlTime\n];\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 660,
+        "wires": [
+            [
+                "8a511da02f94cdf3"
+            ]
+        ]
+    },
+    {
+        "id": "8a511da02f94cdf3",
+        "type": "template",
+        "z": "50d099b7335b2b4a",
+        "name": "",
+        "field": "topic",
+        "fieldType": "msg",
+        "format": "handlebars",
+        "syntax": "mustache",
+        "template": "INSERT INTO iq_air\n(aqi_us, main_pollutant,\n pm25, pm10, o3, no2, so2, co,\n temperature, humidity, pressure, wind_speed, wind_direction,\n city, country, timestamp)\nVALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        "output": "str",
+        "x": 600,
+        "y": 740,
+        "wires": [
+            [
+                "e55682c9e5830b17"
+            ]
+        ]
+    },
+    {
+        "id": "e55682c9e5830b17",
+        "type": "mysql",
+        "z": "50d099b7335b2b4a",
+        "mydb": "db9ddce3769082bf",
+        "name": "Insert IQAir",
+        "x": 790,
+        "y": 740,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "93237ecc440942ee",
+        "type": "debug",
+        "z": "50d099b7335b2b4a",
+        "name": "debug 9",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 400,
+        "y": 740,
+        "wires": []
+    },
+    {
+        "id": "c95ae7c9b6b5f158",
+        "type": "http request",
+        "z": "50d099b7335b2b4a",
+        "name": "HTTP (measurements)",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://api.openaq.org/v3/sensors/1304409/measurements?period_name=hour&limit=10&datetime_from=2026-04-21T00:00:00Z&date_order=desc",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [
+            {
+                "keyType": "other",
+                "keyValue": "X-API-Key",
+                "valueType": "other",
+                "valueValue": "86c890721df3d60dd189cb79d0923583a5e51aa18da8e0f00eff1489c5283d25"
+            }
+        ],
+        "x": 440,
+        "y": 320,
+        "wires": [
+            [
+                "e26142b3742df8e0",
+                "c0be3b1d6455b46e"
+            ]
+        ]
+    },
+    {
+        "id": "9035961da354651c",
+        "type": "function",
+        "z": "50d099b7335b2b4a",
+        "name": "Insert",
+        "func": "const rows = msg.payload;\n\nif (!rows || rows.length === 0) return null;\n\n// Take only the latest row\nconst row = rows[0];\n\nmsg.topic = `\n    INSERT IGNORE INTO openaq\n        (sensor_id, value, units, aqi_label, timestamp_local, timestamp_utc, has_flags)\n    VALUES (?, ?, ?, ?, ?, ?, ?)\n`;\n\nmsg.payload = [\n    row.sensor_id,\n    row.value,\n    row.units,\n    row.aqi_label,\n    row.timestamp_local,\n    row.timestamp_utc,\n    row.has_flags\n];\n\nnode.log(\"Inserting 1 row: \" + row.timestamp_local + \" PM2.5=\" + row.value);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 750,
+        "y": 320,
+        "wires": [
+            [
+                "a2c5649d549e3922",
+                "cd8da27a0ce3d9d9"
+            ]
+        ]
+    },
+    {
+        "id": "a2c5649d549e3922",
+        "type": "mysql",
+        "z": "50d099b7335b2b4a",
+        "mydb": "db9ddce3769082bf",
+        "name": "Insert OpenAQ",
+        "x": 920,
+        "y": 320,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "cd8da27a0ce3d9d9",
+        "type": "debug",
+        "z": "50d099b7335b2b4a",
+        "name": "debug 6",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 840,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "c0be3b1d6455b46e",
+        "type": "function",
+        "z": "50d099b7335b2b4a",
+        "name": "Parse",
+        "func": "const results = msg.payload.results;\n\nif (!results || results.length === 0) {\n    node.warn(\"No data received\");\n    return null;\n}\n\nfunction getAQILabel(pm25) {\n    if (pm25 <= 12) return \"Good\";\n    if (pm25 <= 35.4) return \"Moderate\";\n    if (pm25 <= 55.4) return \"Unhealthy for Sensitive Groups\";\n    if (pm25 <= 150.4) return \"Unhealthy\";\n    if (pm25 <= 250.4) return \"Very Unhealthy\";\n    return \"Hazardous\";\n}\n\nfunction toMySQL(isoStr) {\n    if (!isoStr) return null;\n    return isoStr.replace('T', ' ').substring(0, 19);\n}\n\nmsg.payload = results.map(item => ({\n    sensor_id: 1304409,\n    value: item.value,\n    units: item.parameter.units,\n    aqi_label: getAQILabel(item.value),\n    timestamp_local: toMySQL(item.period.datetimeTo.local),\n    timestamp_utc: toMySQL(item.period.datetimeTo.utc),\n    has_flags: item.flagInfo.hasFlags ? 1 : 0\n}));\n\nnode.log(\"Parsed \" + msg.payload.length + \" records\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 630,
+        "y": 320,
+        "wires": [
+            [
+                "9035961da354651c"
+            ]
+        ]
+    },
+    {
+        "id": "db9ddce3769082bf",
+        "type": "MySQLdatabase",
+        "name": "test",
+        "host": "iot.cpe.ku.ac.th",
+        "port": "3306",
+        "db": "b6710545806",
+        "tz": "",
+        "charset": "UTF8"
+    },
+    {
+        "id": "3f41672e1dfe618b",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "iot.cpe.ku.ac.th",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    }
+]
