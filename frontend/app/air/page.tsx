@@ -116,7 +116,7 @@ function WeatherChart({ rows }: { rows: OpenweatherHistoryRow[] }) {
     labels: rows.map((r) => fmtTs(r.ts)),
     datasets: [
       makeDataset("Temp (°C)", rows.map((r) => r.temperature), "rgb(239,68,68)"),
-      makeDataset("Humidity (%)", rows.map((r) => r.humidity), "rgb(59,130,246)", true),
+      makeDataset("Humidity (%)", rows.map((r) => r.humidity), "rgb(59,130,246)"),
     ],
   }), [rows]);
 

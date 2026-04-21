@@ -179,6 +179,7 @@ export type ForecastEntry = {
   temp_score: number;
   humidity_score: number;
   aqi_score: number;
+  pm25: number | null;
 };
 
 export type ForecastResponse = {

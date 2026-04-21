@@ -387,7 +387,7 @@ paths:
           description: Forecast model to use (default mlp)
           schema:
             type: string
-            enum: [mlp, linear, moving_avg]
+            enum: [mlp, linear, decision_tree, random_forest]
             default: mlp
       responses:
         "200":

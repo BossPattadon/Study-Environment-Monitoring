@@ -1,12 +1,14 @@
-const mlpModel = require("./models/mlpModel");
-const linearModel = require("./models/linearModel");
-const movingAvgModel = require("./models/movingAvgModel");
+const mlpModel          = require("./models/mlpModel");
+const linearModel       = require("./models/linearModel");
+const decisionTreeModel = require("./models/decisionTreeModel");
+const randomForestModel = require("./models/randomForestModel");
 
 // Registry: add new models here — nothing else needs changing.
 const MODELS = {
-  [mlpModel.name]: mlpModel,
-  [linearModel.name]: linearModel,
-  [movingAvgModel.name]: movingAvgModel,
+  [mlpModel.name]:          mlpModel,
+  [linearModel.name]:       linearModel,
+  [decisionTreeModel.name]: decisionTreeModel,
+  [randomForestModel.name]: randomForestModel,
 };
 
 const DEFAULT_MODEL = mlpModel.name;

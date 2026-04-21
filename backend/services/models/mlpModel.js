@@ -1,18 +1,20 @@
 const tf = require("@tensorflow/tfjs");
-const { SCORE_KEYS, encodeTime } = require("./shared");
+const { ALL_OUTPUT_KEYS, OUTPUT_SCALES, encodeTime } = require("./shared");
+
+const N_OUT = ALL_OUTPUT_KEYS.length;
 
 let _cached = null;
 let _cacheCount = 0;
 
 async function train(rows) {
   const xs = rows.map((r) => encodeTime(new Date(r.timestamp)));
-  const ys = rows.map((r) => SCORE_KEYS.map((k) => (r[k] ?? 0) / 100));
+  const ys = rows.map((r) => ALL_OUTPUT_KEYS.map((k) => (r[k] ?? 0) / OUTPUT_SCALES[k]));
   const xT = tf.tensor2d(xs, [xs.length, 4]);
-  const yT = tf.tensor2d(ys, [ys.length, 6]);
+  const yT = tf.tensor2d(ys, [ys.length, N_OUT]);
   const model = tf.sequential();
   model.add(tf.layers.dense({ inputShape: [4], units: 32, activation: "relu" }));
   model.add(tf.layers.dense({ units: 16, activation: "relu" }));
-  model.add(tf.layers.dense({ units: 6, activation: "sigmoid" }));
+  model.add(tf.layers.dense({ units: N_OUT, activation: "sigmoid" }));
   model.compile({ optimizer: tf.train.adam(0.01), loss: "meanSquaredError" });
   await model.fit(xT, yT, { epochs: 150, batchSize: Math.min(32, xs.length), verbose: 0 });
   xT.dispose();
@@ -42,8 +44,9 @@ async function predict(rows, hoursAhead, fromDate) {
     input.dispose();
     output.dispose();
     const entry = { timestamp: target.toISOString() };
-    SCORE_KEYS.forEach((k, i) => {
-      entry[k] = Math.round(values[i] * 100 * 10) / 10;
+    ALL_OUTPUT_KEYS.forEach((k, i) => {
+      const scale = OUTPUT_SCALES[k];
+      entry[k] = Math.round(values[i] * scale * 10) / 10;
     });
     predictions.push(entry);
   }
@@ -53,6 +56,6 @@ async function predict(rows, hoursAhead, fromDate) {
 module.exports = {
   name: "mlp",
   label: "MLP",
-  description: "4 time features → 32→16→6 units · sigmoid · TF.js",
+  description: `4 time features → 32→16→${N_OUT} units · sigmoid · TF.js`,
   predict,
 };

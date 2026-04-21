@@ -1,17 +1,18 @@
 const tf = require("@tensorflow/tfjs");
-const { SCORE_KEYS, encodeTime } = require("./shared");
+const { ALL_OUTPUT_KEYS, OUTPUT_SCALES, encodeTime } = require("./shared");
+
+const N_OUT = ALL_OUTPUT_KEYS.length;
 
 let _cached = null;
 let _cacheCount = 0;
 
 async function train(rows) {
   const xs = rows.map((r) => encodeTime(new Date(r.timestamp)));
-  const ys = rows.map((r) => SCORE_KEYS.map((k) => (r[k] ?? 0) / 100));
+  const ys = rows.map((r) => ALL_OUTPUT_KEYS.map((k) => (r[k] ?? 0) / OUTPUT_SCALES[k]));
   const xT = tf.tensor2d(xs, [xs.length, 4]);
-  const yT = tf.tensor2d(ys, [ys.length, 6]);
-  // Single dense layer with no hidden units = linear regression
+  const yT = tf.tensor2d(ys, [ys.length, N_OUT]);
   const model = tf.sequential();
-  model.add(tf.layers.dense({ inputShape: [4], units: 6, activation: "linear" }));
+  model.add(tf.layers.dense({ inputShape: [4], units: N_OUT, activation: "linear" }));
   model.compile({ optimizer: tf.train.adam(0.01), loss: "meanSquaredError" });
   await model.fit(xT, yT, { epochs: 500, batchSize: Math.min(64, xs.length), verbose: 0 });
   xT.dispose();
@@ -41,9 +42,9 @@ async function predict(rows, hoursAhead, fromDate) {
     input.dispose();
     output.dispose();
     const entry = { timestamp: target.toISOString() };
-    SCORE_KEYS.forEach((k, i) => {
-      // linear activation can exceed [0,1] — clamp before scaling
-      entry[k] = Math.round(Math.min(100, Math.max(0, values[i] * 100)) * 10) / 10;
+    ALL_OUTPUT_KEYS.forEach((k, i) => {
+      const scale = OUTPUT_SCALES[k];
+      entry[k] = Math.round(Math.min(scale, Math.max(0, values[i] * scale)) * 10) / 10;
     });
     predictions.push(entry);
   }
@@ -53,6 +54,6 @@ async function predict(rows, hoursAhead, fromDate) {
 module.exports = {
   name: "linear",
   label: "Linear Regression",
-  description: "4 time features → 6 outputs · single linear layer · TF.js",
+  description: `4 time features → ${N_OUT} outputs · single linear layer · TF.js`,
   predict,
 };
