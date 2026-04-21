@@ -184,15 +184,31 @@ export type ForecastEntry = {
 export type ForecastResponse = {
   trained_on: number;
   insufficient_data: boolean;
+  model_name: string;
+  model_label: string;
+  model_description: string;
   recent: ForecastEntry[];
   predictions: ForecastEntry[];
 };
 
-export async function fetchForecast(hours = 24): Promise<ForecastResponse | null> {
+export type ForecastModel = {
+  name: string;
+  label: string;
+  description: string;
+};
+
+export async function fetchForecast(hours = 24, model = "mlp"): Promise<ForecastResponse | null> {
   const u = new URL(`${apiBase()}/api/forecast`);
   u.searchParams.set("hours", String(hours));
+  u.searchParams.set("model", model);
   const res = await fetch(u.toString(), { cache: "no-store" });
   return parseJsonResponse<ForecastResponse>(res);
+}
+
+export async function fetchForecastModels(): Promise<ForecastModel[]> {
+  const res = await fetch(`${apiBase()}/api/forecast/models`, { cache: "no-store" });
+  const data = await parseJsonResponse<unknown>(res);
+  return Array.isArray(data) ? (data as ForecastModel[]) : [];
 }
 
 export async function fetchDailyReport(

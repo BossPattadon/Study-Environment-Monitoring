@@ -1,15 +1,15 @@
 "use client";
 
 import { registerChartJs } from "@/components/charts/register-chart";
-import type { ForecastEntry, ForecastResponse } from "@/services/api";
-import { fetchForecast } from "@/services/api";
+import type { ForecastEntry, ForecastModel, ForecastResponse } from "@/services/api";
+import { fetchForecast, fetchForecastModels } from "@/services/api";
 import type { ChartData, ChartOptions } from "chart.js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Line } from "react-chartjs-2";
 
 registerChartJs();
 
-// ── colour palette (actual solid / predicted dashed share same hue) ──────────
+// ── colour palette ────────────────────────────────────────────────────────────
 
 const PALETTE: Record<keyof Omit<ForecastEntry, "timestamp">, string> = {
   total_score: "rgb(20,184,166)",
@@ -54,32 +54,24 @@ function buildChartData(
   predictions: ForecastEntry[],
   keys: ScoreKey[]
 ): ChartData<"line"> {
-  // Merge timestamps — recent first, then predictions (no overlap)
   const recentLabels = recent.map((r) => fmtLabel(r.timestamp));
   const predLabels = predictions.map((p) => fmtLabel(p.timestamp));
   const labels = [...recentLabels, ...predLabels];
-
   const nRecent = recentLabels.length;
 
   const datasets = keys.flatMap((key) => {
     const color = PALETTE[key];
     const label = LABELS[key];
-
-    // Actual: values for recent, null for future
     const actualData = [
       ...recent.map((r) => r[key] as number),
       ...Array(predLabels.length).fill(null),
     ];
-
-    // Predicted: null for recent, values for future
-    // Add one bridge point: repeat the last actual value so the lines connect
     const lastActual = recent.length ? (recent[recent.length - 1][key] as number) : null;
     const predData = [
       ...Array(nRecent > 0 ? nRecent - 1 : 0).fill(null),
       lastActual,
       ...predictions.map((p) => p[key] as number),
     ];
-
     return [
       {
         label: `${label} (actual)`,
@@ -121,11 +113,13 @@ const chartOptions: ChartOptions<"line"> = {
       position: "bottom",
       labels: { color: "#71717a", boxWidth: 12, font: { size: 11 } },
     },
-    tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(1)}` } },
+    tooltip: {
+      callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(1)}` },
+    },
   },
   scales: {
     x: {
-      ticks: { color: "#71717a", maxRotation: 45, font: { size: 10 } },
+      ticks: { color: "#71717a", maxRotation: 45, font: { size: 10 }, maxTicksLimit: 12 },
       grid: { color: "rgba(113,113,122,0.12)" },
     },
     y: {
@@ -154,26 +148,72 @@ function ScoreBadge({ score }: { score: number }) {
   );
 }
 
+// ── model selector ────────────────────────────────────────────────────────────
+
+function ModelSelector({
+  models,
+  selected,
+  disabled,
+  onChange,
+}: {
+  models: ForecastModel[];
+  selected: string;
+  disabled: boolean;
+  onChange: (name: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Model</span>
+      <div className="flex rounded-lg border border-zinc-200 p-0.5 gap-0.5 dark:border-zinc-700">
+        {models.map((m) => (
+          <button
+            key={m.name}
+            onClick={() => onChange(m.name)}
+            disabled={disabled}
+            title={m.description}
+            className={`rounded-md px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 ${
+              selected === m.name
+                ? "bg-teal-600 text-white shadow-sm"
+                : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            }`}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── page ──────────────────────────────────────────────────────────────────────
 
 export default function ForecastPage() {
   const [data, setData] = useState<ForecastResponse | null>(null);
+  const [models, setModels] = useState<ForecastModel[]>([]);
+  const [selectedModel, setSelectedModel] = useState("mlp");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+
+  // Load available models once on mount
+  useEffect(() => {
+    fetchForecastModels()
+      .then((ms) => { if (ms.length) setModels(ms); })
+      .catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const result = await fetchForecast(24);
+      const result = await fetchForecast(24, selectedModel);
       setData(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load forecast");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedModel]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -187,7 +227,7 @@ export default function ForecastPage() {
     <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 lg:px-8">
 
       {/* header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             Study Score Forecast
@@ -196,23 +236,35 @@ export default function ForecastPage() {
             ML-predicted hourly scores for the next 24 hours, based on historical time-of-day patterns.
           </p>
         </div>
-        <button
-          onClick={() => void load()}
-          disabled={loading}
-          className="rounded-full bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50 transition"
-        >
-          {loading ? "Training…" : "Refresh"}
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          {models.length > 0 && (
+            <ModelSelector
+              models={models}
+              selected={selectedModel}
+              disabled={loading}
+              onChange={setSelectedModel}
+            />
+          )}
+          <button
+            onClick={() => void load()}
+            disabled={loading}
+            className="rounded-full bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50 transition"
+          >
+            {loading ? "Training…" : "Refresh"}
+          </button>
+        </div>
       </div>
 
       {/* model info */}
       {data && !loading && (
         <div className="flex flex-wrap gap-3 text-sm text-zinc-500 dark:text-zinc-400">
           <span className="rounded-lg bg-zinc-100 px-3 py-1 dark:bg-zinc-800">
-            Trained on <strong className="text-zinc-700 dark:text-zinc-200">{data.trained_on}</strong> historical readings
+            Trained on{" "}
+            <strong className="text-zinc-700 dark:text-zinc-200">{data.trained_on}</strong>{" "}
+            historical readings
           </span>
-          <span className="rounded-lg bg-zinc-100 px-3 py-1 dark:bg-zinc-800">
-            Model: MLP · 4 time features → 32→16→6 units
+          <span className="rounded-lg bg-teal-50 px-3 py-1 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300">
+            {data.model_label} · {data.model_description}
           </span>
           {data.insufficient_data && (
             <span className="rounded-lg bg-amber-100 px-3 py-1 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">

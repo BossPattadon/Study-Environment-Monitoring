@@ -347,15 +347,30 @@ paths:
 
   # ── Forecast ──────────────────────────────────────────────────────────────────
 
+  /api/forecast/models:
+    get:
+      tags: [Forecast]
+      summary: List available forecast models
+      description: Returns metadata for all registered forecast models.
+      responses:
+        "200":
+          description: Array of available models
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ForecastModelMeta"
+
   /api/forecast:
     get:
       tags: [Forecast]
       summary: Get ML study score forecast
       description: >
-        Trains a TensorFlow.js MLP on all historical study index data and returns
-        both the recent hourly history (7-day window) and N hours of predicted
-        scores. Returns `insufficient_data: true` if fewer than 10 training rows
-        are available.
+        Runs the selected forecast model on all historical study index data and
+        returns both the recent hourly history (7-day window) and N hours of
+        predicted scores. Returns `insufficient_data: true` if fewer than 10
+        training rows are available.
       parameters:
         - name: hours
           in: query
@@ -366,6 +381,14 @@ paths:
             minimum: 1
             maximum: 48
             default: 24
+        - name: model
+          in: query
+          required: false
+          description: Forecast model to use (default mlp)
+          schema:
+            type: string
+            enum: [mlp, linear, moving_avg]
+            default: mlp
       responses:
         "200":
           description: Forecast result with recent history and predictions
@@ -928,9 +951,31 @@ components:
           format: float
           example: 100.0
 
+    ForecastModelMeta:
+      type: object
+      properties:
+        name:
+          type: string
+          example: mlp
+        label:
+          type: string
+          example: MLP
+        description:
+          type: string
+          example: "4 time features → 32→16→6 units · sigmoid · TF.js"
+
     ForecastResponse:
       type: object
       properties:
+        model_name:
+          type: string
+          example: mlp
+        model_label:
+          type: string
+          example: MLP
+        model_description:
+          type: string
+          example: "4 time features → 32→16→6 units · sigmoid · TF.js"
         trained_on:
           type: integer
           description: Number of training rows used to fit the model
