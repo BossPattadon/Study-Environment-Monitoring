@@ -8,8 +8,8 @@ A full-stack application that monitors physical study conditions in real time â€
 
 | Name | Department / Faculty / University |
 |---|---|
-| Pakorn Fudul | Department of Computer Engineering, Faculty of Engineering, Chulalongkorn University |
-| Pattadon Thongruang | Department of Computer Engineering, Faculty of Engineering, Chulalongkorn University |
+| Pakorn Fudulyawajananont | 6710545806 |
+| Pattadon Udompaipuek | 6710545750 |
 
 ---
 
