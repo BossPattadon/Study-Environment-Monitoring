@@ -6,10 +6,10 @@ A full-stack application that monitors physical study conditions in real time â€
 
 ## Team Members
 
-| Name | Department / Faculty / University |
-|---|---|
-| Pakorn Fudulyawajananont | 6710545806 |
-| Pattadon Udompaipuek | 6710545750 |
+| Name | Department / Faculty / University | Student ID |
+|---|---|--|
+| Pakorn Fudulyawajananont | Department of Computer Engineering, Faculty of Engineering, Kasetsart University | 6710545806 |
+| Pattadon Udompaipuek | Department of Computer Engineering, Faculty of Engineering, Kasetsart University | 6710545750 |
 
 ---
 
