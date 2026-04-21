@@ -206,23 +206,16 @@ pnpm install
 
 #### 3. Configure environment variables
 
-**Backend** — create `backend/.env`:
+**Backend** — copy the environment template and edit with your values:
 
-```env
-PORT=8000
-
-DB_HOST=your-mysql-host
-DB_USER=your-db-username
-DB_PASSWORD=your-db-password
-DB_NAME=your-db-name
+```bash
+cp backend/.env.example backend/.env
 ```
 
-> The remote MySQL server enforces `max_user_connections = 5`. The pool's `connectionLimit` is set to `3` in `config/db.js` — do not raise it above `4`.
+**Frontend** — copy the environment template and edit with your values:
 
-**Frontend** — create `frontend/.env`:
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8000
+```bash
+cp frontend/.env.example frontend/.env
 ```
 
 #### 4. Run the application
