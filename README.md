@@ -256,4 +256,4 @@ The MySQL connection timed out. Resolved — the backend uses a connection pool 
 
 ## License
 
-ISC
+MIT LICENSE
