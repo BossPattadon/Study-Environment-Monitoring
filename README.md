@@ -4,17 +4,64 @@ A full-stack application that monitors physical study conditions in real time �
 
 ---
 
-## Overview
+## Team Members
 
-| Layer | Technology |
+| Name | Department / Faculty / University |
 |---|---|
-| Backend | Node.js · Express 5 |
-| Database | MySQL |
-| Frontend | Next.js 16 · React 19 · TypeScript |
-| Styling | Tailwind CSS 4 |
-| Charts | Chart.js · react-chartjs-2 |
-| API Spec | OpenAPI 3.0 (Swagger UI at `/api-docs`) |
-| Package manager | pnpm workspaces |
+| Pakorn Fudul | Department of Computer Engineering, Faculty of Engineering, Chulalongkorn University |
+| Pattadon Thongruang | Department of Computer Engineering, Faculty of Engineering, Chulalongkorn University |
+
+---
+
+## Project Overview
+
+This system continuously collects environmental data from physical IoT sensors installed in a study room (temperature, humidity, light, noise) and enriches it with outdoor air-quality readings from public APIs (IQAir, OpenAQ, OpenWeatherMap). A scoring algorithm converts raw sensor values into a **study-suitability index** (0–100) that tells you at a glance how conducive your current environment is for focused study.
+
+### Features
+
+- **Live dashboard** — real-time study index ring with per-metric sub-scores
+- **Air quality page** — current US AQI, PM2.5, outdoor temperature/humidity with time-series charts
+- **History page** — interactive historical charts and raw data table with configurable date range
+- **Forecast page** — ML-based predictions of the study index and PM2.5 for the next N hours, with four swappable models (MLP, Linear Regression, Decision Tree, Random Forest)
+- **Insights page** — rule-based recommendations based on current readings
+- **Settings page** — configurable scoring weights persisted on the backend
+- **Swagger UI** — interactive API documentation at `/api-docs`
+
+---
+
+## Required Libraries and Tools
+
+### Runtime requirements
+
+| Tool | Required version |
+|---|---|
+| Node.js | ≥ 18 (tested on v25.9) |
+| pnpm | ≥ 9 (tested on 10.33) |
+| MySQL | ≥ 8.0 |
+
+### Backend dependencies
+
+| Package | Version |
+|---|---|
+| express | ^5.2.1 |
+| mysql2 | ^3.20.0 |
+| @tensorflow/tfjs | ^4.22.0 |
+| swagger-ui-express | ^5.0.1 |
+| js-yaml | ^4.1.1 |
+| cors | ^2.8.6 |
+| dotenv | ^17.3.1 |
+
+### Frontend dependencies
+
+| Package | Version |
+|---|---|
+| next | 16.2.1 |
+| react | 19.2.4 |
+| react-dom | 19.2.4 |
+| chart.js | ^4.5.1 |
+| react-chartjs-2 | ^5.3.1 |
+| tailwindcss | ^4 |
+| typescript | ^5 |
 
 ---
 
@@ -31,6 +78,7 @@ Study-Environment-Monitoring/
 │   ├── models/                 # SQL query functions
 │   ├── routes/                 # Express routers
 │   ├── services/               # Scoring logic + external API integrations
+│   │   └── models/             # Forecast model implementations (MLP, Linear, DT, RF)
 │   ├── openapi.yaml            # OpenAPI 3.0 specification
 │   ├── app.js                  # Express app + Swagger UI mount
 │   └── server.js               # Entry point
@@ -38,7 +86,8 @@ Study-Environment-Monitoring/
 │   ├── app/
 │   │   ├── dashboard/          # Live overview with score ring
 │   │   ├── sensors/            # Raw sensor readings
-│   │   ├── air/                # Air quality (IQAir / OpenAQ)
+│   │   ├── air/                # Air quality (IQAir / OpenAQ / OpenWeatherMap)
+│   │   ├── forecast/           # ML-based forecast with model selector
 │   │   ├── history/            # Historical charts and data table
 │   │   ├── insights/           # Rule-based recommendations
 │   │   └── settings/           # Scoring weight configuration
@@ -55,6 +104,7 @@ Study-Environment-Monitoring/
 ## Data Sources
 
 ### Primary — IoT Sensors
+
 Physical sensors connected to a microcontroller (Arduino / ESP) post readings to `POST /api/sensors`:
 
 | Sensor | Measures |
@@ -65,6 +115,7 @@ Physical sensors connected to a microcontroller (Arduino / ESP) post readings to
 | PIR | Motion detection |
 
 ### Secondary — Web APIs
+
 Polled externally and stored in the database:
 
 | Source | Data |
@@ -115,34 +166,47 @@ All endpoints are prefixed with `/api`. Full interactive documentation is availa
 | `GET` | `/api/sensors/latest` | Latest sensor reading |
 | `GET` | `/api/sensors/range?start=&end=` | Readings within an ISO datetime range |
 | `GET` | `/api/iq-air/latest` | Latest IQAir reading |
+| `GET` | `/api/iq-air/history?days=7` | IQAir history |
 | `GET` | `/api/openaq/latest` | Latest OpenAQ measurement |
+| `GET` | `/api/openaq/history?days=7` | OpenAQ history |
 | `GET` | `/api/openweather/latest` | Latest OpenWeatherMap data |
+| `GET` | `/api/openweather/history?days=7` | OpenWeatherMap history |
 | `GET` | `/api/study-index/latest` | Latest computed study index entry |
+| `GET` | `/api/study-index/history?days=7` | Study index history |
 | `GET` | `/api/study-index/daily-scores` | Daily average total scores |
 | `GET` | `/api/study-index/hourly-averages` | Average score by hour-of-day (0–23) |
 | `GET` | `/api/reports/daily?limit=90` | Aggregated daily report (sensor + index) |
+| `GET` | `/api/forecast?hours=24&model=mlp` | ML forecast (`mlp` / `linear` / `decision_tree` / `random_forest`) |
+| `GET` | `/api/forecast/models` | Available forecast model list |
 | `GET` | `/api/settings/weights` | Current scoring weights |
 | `PUT` | `/api/settings/weights` | Update scoring weights |
 
 ---
 
-## Setup
+## GitHub Repository
 
-### Prerequisites
-- Node.js ≥ 18
-- pnpm — `npm install -g pnpm`
-- MySQL database
+**[https://github.com/BossPattadon/Study-Environment-Monitoring](https://github.com/BossPattadon/Study-Environment-Monitoring)**
 
-### 1. Install dependencies
+### Building and Running
+
+#### 1. Clone the repository
 
 ```bash
-# From repo root — installs both backend and frontend
+git clone https://github.com/BossPattadon/Study-Environment-Monitoring.git
+cd Study-Environment-Monitoring
+```
+
+#### 2. Install dependencies
+
+```bash
+# Installs both backend and frontend from the repo root
+npm install -g pnpm
 pnpm install
 ```
 
-### 2. Configure environment variables
+#### 3. Configure environment variables
 
-**Backend** — `backend/.env`:
+**Backend** — create `backend/.env`:
 
 ```env
 PORT=8000
@@ -155,30 +219,28 @@ DB_NAME=your-db-name
 
 > The remote MySQL server enforces `max_user_connections = 5`. The pool's `connectionLimit` is set to `3` in `config/db.js` — do not raise it above `4`.
 
-**Frontend** — `frontend/.env`:
+**Frontend** — create `frontend/.env`:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-### 3. Run
+#### 4. Run the application
 
 Open two terminals:
 
 ```bash
-# Terminal 1 — Backend
+# Terminal 1 — Backend (port 8000)
 cd backend
 node server.js
-# → Server running on port 8000
-# → DB connected
 
-# Terminal 2 — Frontend
+# Terminal 2 — Frontend (port 3000)
 cd frontend
-npm run dev
-# → http://localhost:3000
+pnpm dev
 ```
 
-**API documentation**: http://localhost:8000/api-docs
+- Frontend: http://localhost:3000
+- API documentation (Swagger UI): http://localhost:8000/api-docs
 
 ---
 
