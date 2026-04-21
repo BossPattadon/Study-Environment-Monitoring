@@ -20,6 +20,8 @@ tags:
     description: OpenWeatherMap data
   - name: Study Index
     description: Derived study-suitability index computed from all sources
+  - name: Forecast
+    description: ML-based study score forecast using a TensorFlow.js MLP model
   - name: Reports
     description: Aggregated daily/hourly reports across all data sources
   - name: Settings
@@ -144,6 +146,32 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/iq-air/history:
+    get:
+      tags: [Air Quality]
+      summary: Get hourly-averaged IQAir AQI history
+      parameters:
+        - name: days
+          in: query
+          required: false
+          description: Number of past days to include (1–90, default 7)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 90
+            default: 7
+      responses:
+        "200":
+          description: Hourly-averaged IQAir rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/IqAirHistoryRow"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/openaq/latest:
     get:
       tags: [Air Quality]
@@ -157,6 +185,32 @@ paths:
                 nullable: true
                 oneOf:
                   - $ref: "#/components/schemas/OpenaqMeasurement"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/openaq/history:
+    get:
+      tags: [Air Quality]
+      summary: Get hourly-averaged OpenAQ PM2.5 history
+      parameters:
+        - name: days
+          in: query
+          required: false
+          description: Number of past days to include (1–90, default 7)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 90
+            default: 7
+      responses:
+        "200":
+          description: Hourly-averaged OpenAQ rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OpenaqHistoryRow"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -175,6 +229,32 @@ paths:
                 nullable: true
                 oneOf:
                   - $ref: "#/components/schemas/OpenweatherReading"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/openweather/history:
+    get:
+      tags: [Weather]
+      summary: Get hourly-averaged OpenWeatherMap history
+      parameters:
+        - name: days
+          in: query
+          required: false
+          description: Number of past days to include (1–90, default 7)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 90
+            default: 7
+      responses:
+        "200":
+          description: Hourly-averaged OpenWeatherMap rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OpenweatherHistoryRow"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -232,6 +312,67 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/HourlyAverage"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/study-index/history:
+    get:
+      tags: [Study Index]
+      summary: Get hourly-averaged study index history
+      description: >
+        Returns hourly-bucketed averages of all six scores (total, light, noise,
+        temperature, humidity, AQI) for the last N days. Used for dashboard
+        trend charting.
+      parameters:
+        - name: days
+          in: query
+          required: false
+          description: Number of past days to include (1–90, default 7)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 90
+            default: 7
+      responses:
+        "200":
+          description: Hourly-averaged study index rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StudyIndexHistoryRow"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ── Forecast ──────────────────────────────────────────────────────────────────
+
+  /api/forecast:
+    get:
+      tags: [Forecast]
+      summary: Get ML study score forecast
+      description: >
+        Trains a TensorFlow.js MLP on all historical study index data and returns
+        both the recent hourly history (7-day window) and N hours of predicted
+        scores. Returns `insufficient_data: true` if fewer than 10 training rows
+        are available.
+      parameters:
+        - name: hours
+          in: query
+          required: false
+          description: Number of hours to forecast ahead (1–48, default 24)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 48
+            default: 24
+      responses:
+        "200":
+          description: Forecast result with recent history and predictions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForecastResponse"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -409,11 +550,6 @@ components:
           format: float
           description: PM2.5 concentration in µg/m³
           example: 12.4
-        pm10:
-          type: number
-          format: float
-          description: PM10 concentration in µg/m³
-          example: 18.1
         timestamp:
           type: string
           format: date-time
@@ -665,6 +801,154 @@ components:
           minimum: 0
           description: Relative weight for AQI score
           example: 1
+
+    IqAirHistoryRow:
+      type: object
+      properties:
+        ts:
+          type: string
+          format: date-time
+          description: Hourly bucket timestamp
+          example: "2025-04-18T14:00:00"
+        aqi_us:
+          type: number
+          format: float
+          nullable: true
+          example: 45.0
+        main_pollutant:
+          type: string
+          nullable: true
+          example: p2
+
+    OpenaqHistoryRow:
+      type: object
+      properties:
+        ts:
+          type: string
+          format: date-time
+          description: Hourly bucket timestamp
+          example: "2025-04-18T14:00:00"
+        pm25:
+          type: number
+          format: float
+          nullable: true
+          example: 12.4
+
+    OpenweatherHistoryRow:
+      type: object
+      properties:
+        ts:
+          type: string
+          format: date-time
+          description: Hourly bucket timestamp
+          example: "2025-04-18T14:00:00"
+        temperature:
+          type: number
+          format: float
+          nullable: true
+          example: 31.8
+        humidity:
+          type: number
+          format: float
+          nullable: true
+          example: 76.0
+        description:
+          type: string
+          nullable: true
+          example: scattered clouds
+
+    StudyIndexHistoryRow:
+      type: object
+      properties:
+        ts:
+          type: string
+          format: date-time
+          description: Hourly bucket timestamp
+          example: "2025-04-18T14:00:00"
+        total_score:
+          type: number
+          format: float
+          nullable: true
+          example: 82.5
+        light_score:
+          type: number
+          format: float
+          nullable: true
+          example: 88.0
+        noise_score:
+          type: number
+          format: float
+          nullable: true
+          example: 97.0
+        temp_score:
+          type: number
+          format: float
+          nullable: true
+          example: 93.0
+        humidity_score:
+          type: number
+          format: float
+          nullable: true
+          example: 90.0
+        aqi_score:
+          type: number
+          format: float
+          nullable: true
+          example: 100.0
+
+    ForecastEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-04-19T10:00:00"
+        total_score:
+          type: number
+          format: float
+          example: 80.2
+        light_score:
+          type: number
+          format: float
+          example: 85.0
+        noise_score:
+          type: number
+          format: float
+          example: 96.0
+        temp_score:
+          type: number
+          format: float
+          example: 92.0
+        humidity_score:
+          type: number
+          format: float
+          example: 88.0
+        aqi_score:
+          type: number
+          format: float
+          example: 100.0
+
+    ForecastResponse:
+      type: object
+      properties:
+        trained_on:
+          type: integer
+          description: Number of training rows used to fit the model
+          example: 480
+        insufficient_data:
+          type: boolean
+          description: True if fewer than 10 training rows were available
+          example: false
+        recent:
+          type: array
+          description: Hourly-averaged actual scores for the past 7 days
+          items:
+            $ref: "#/components/schemas/StudyIndexHistoryRow"
+        predictions:
+          type: array
+          description: Forecasted scores for the next N hours
+          items:
+            $ref: "#/components/schemas/ForecastEntry"
 
     ErrorResponse:
       type: object
