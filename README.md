@@ -110,7 +110,7 @@ Physical sensors connected to a microcontroller (Arduino / ESP) post readings to
 | Sensor | Measures |
 |---|---|
 | DHT11 | Temperature (°C), Humidity (%RH) |
-| KY-018 photoresistor | Light level (ADC 0–1023; lower = brighter) |
+| KY-018 photoresistor | Light level (lux) |
 | Sound sensor | Noise level (ADC 0–1023) |
 | PIR | Motion detection |
 
@@ -121,7 +121,7 @@ Polled externally and stored in the database:
 | Source | Data |
 |---|---|
 | [IQAir](https://www.iqair.com/air-quality-api) | US AQI, main pollutant |
-| [OpenAQ](https://openaq.org) | PM2.5, PM10 (µg/m³) |
+| [OpenAQ](https://openaq.org) | PM2.5 (µg/m³) |
 | [OpenWeatherMap](https://openweathermap.org/api) | Outdoor temperature, humidity, weather description |
 
 ---
